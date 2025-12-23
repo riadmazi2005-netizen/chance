@@ -110,23 +110,15 @@ const initializeMockData = () => {
       }
     ]));
 
-    // Sample accidents
     localStorage.setItem(`${STORAGE_PREFIX}accidents`, JSON.stringify([]));
-
-    // Sample notifications
     localStorage.setItem(`${STORAGE_PREFIX}notifications`, JSON.stringify([]));
-
-    // Sample payments
     localStorage.setItem(`${STORAGE_PREFIX}payments`, JSON.stringify([]));
-
-    // Sample raise requests
     localStorage.setItem(`${STORAGE_PREFIX}raiseRequests`, JSON.stringify([]));
 
     localStorage.setItem(`${STORAGE_PREFIX}initialized`, 'true');
   }
 };
 
-// Generic CRUD operations
 const getEntity = (entityName) => {
   initializeMockData();
   const data = localStorage.getItem(`${STORAGE_PREFIX}${entityName}`);
@@ -141,121 +133,53 @@ const generateId = () => {
   return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 };
 
-// Mock API
-export const mockApi = {
+// Create base CRUD methods
+const createEntityMethods = (entityName) => ({
+  list: async () => getEntity(entityName),
+  filter: async (criteria) => {
+    const entities = getEntity(entityName);
+    return entities.filter(e => {
+      return Object.keys(criteria).every(key => e[key] === criteria[key]);
+    });
+  },
+  create: async (data) => {
+    const entities = getEntity(entityName);
+    const newEntity = { ...data, id: generateId(), created_date: new Date().toISOString() };
+    entities.push(newEntity);
+    saveEntity(entityName, entities);
+    return newEntity;
+  },
+  update: async (id, data) => {
+    const entities = getEntity(entityName);
+    const index = entities.findIndex(e => e.id === id);
+    if (index !== -1) {
+      entities[index] = { ...entities[index], ...data };
+      saveEntity(entityName, entities);
+      return entities[index];
+    }
+    return null;
+  },
+  delete: async (id) => {
+    const entities = getEntity(entityName);
+    const filtered = entities.filter(e => e.id !== id);
+    saveEntity(entityName, filtered);
+    return { deleted: true, id };
+  }
+});
+
+// Create the API object
+const apiObject = {
   entities: {
-    Admin: {
-      list: async () => getEntity('admins'),
-      create: async (data) => {
-        const entities = getEntity('admins');
-        const newEntity = { ...data, id: generateId() };
-        entities.push(newEntity);
-        saveEntity('admins', entities);
-        return newEntity;
-      }
-    },
-    Driver: {
-      list: async () => getEntity('drivers'),
-      filter: async (criteria) => {
-        const entities = getEntity('drivers');
-        return entities.filter(e => {
-          return Object.keys(criteria).every(key => e[key] === criteria[key]);
-        });
-      },
-      update: async (id, data) => {
-        const entities = getEntity('drivers');
-        const index = entities.findIndex(e => e.id === id);
-        if (index !== -1) {
-          entities[index] = { ...entities[index], ...data };
-          saveEntity('drivers', entities);
-          return entities[index];
-        }
-        return null;
-      }
-    },
-    Supervisor: {
-      list: async () => getEntity('supervisors'),
-      filter: async (criteria) => {
-        const entities = getEntity('supervisors');
-        return entities.filter(e => {
-          return Object.keys(criteria).every(key => e[key] === criteria[key]);
-        });
-      }
-    },
-    Tutor: {
-      list: async () => getEntity('tutors'),
-      filter: async (criteria) => {
-        const entities = getEntity('tutors');
-        return entities.filter(e => {
-          return Object.keys(criteria).every(key => e[key] === criteria[key]);
-        });
-      },
-      update: async (id, data) => {
-        const entities = getEntity('tutors');
-        const index = entities.findIndex(e => e.id === id);
-        if (index !== -1) {
-          entities[index] = { ...entities[index], ...data };
-          saveEntity('tutors', entities);
-          return entities[index];
-        }
-        return null;
-      }
-    },
-    Bus: {
-      list: async () => getEntity('buses'),
-      filter: async (criteria) => {
-        const entities = getEntity('buses');
-        return entities.filter(e => {
-          return Object.keys(criteria).every(key => e[key] === criteria[key]);
-        });
-      }
-    },
-    Route: {
-      list: async () => getEntity('routes')
-    },
-    Student: {
-      list: async () => getEntity('students'),
-      filter: async (criteria) => {
-        const entities = getEntity('students');
-        return entities.filter(e => {
-          return Object.keys(criteria).every(key => e[key] === criteria[key]);
-        });
-      },
-      create: async (data) => {
-        const entities = getEntity('students');
-        const newEntity = { ...data, id: generateId(), created_date: new Date().toISOString() };
-        entities.push(newEntity);
-        saveEntity('students', entities);
-        return newEntity;
-      },
-      update: async (id, data) => {
-        const entities = getEntity('students');
-        const index = entities.findIndex(e => e.id === id);
-        if (index !== -1) {
-          entities[index] = { ...entities[index], ...data };
-          saveEntity('students', entities);
-          return entities[index];
-        }
-        return null;
-      }
-    },
-    Accident: {
-      list: async () => getEntity('accidents'),
-      filter: async (criteria) => {
-        const entities = getEntity('accidents');
-        return entities.filter(e => {
-          return Object.keys(criteria).every(key => e[key] === criteria[key]);
-        });
-      }
-    },
+    Admin: createEntityMethods('admins'),
+    Driver: createEntityMethods('drivers'),
+    Supervisor: createEntityMethods('supervisors'),
+    Tutor: createEntityMethods('tutors'),
+    Bus: createEntityMethods('buses'),
+    Route: createEntityMethods('routes'),
+    Student: createEntityMethods('students'),
+    Accident: createEntityMethods('accidents'),
     Notification: {
-      list: async () => getEntity('notifications'),
-      filter: async (criteria) => {
-        const entities = getEntity('notifications');
-        return entities.filter(e => {
-          return Object.keys(criteria).every(key => e[key] === criteria[key]);
-        });
-      },
+      ...createEntityMethods('notifications'),
       create: async (data) => {
         const entities = getEntity('notifications');
         const newEntity = { 
@@ -267,39 +191,17 @@ export const mockApi = {
         entities.push(newEntity);
         saveEntity('notifications', entities);
         return newEntity;
-      },
-      update: async (id, data) => {
-        const entities = getEntity('notifications');
-        const index = entities.findIndex(e => e.id === id);
-        if (index !== -1) {
-          entities[index] = { ...entities[index], ...data };
-          saveEntity('notifications', entities);
-          return entities[index];
-        }
-        return null;
       }
     },
-    Payment: {
-      list: async () => getEntity('payments'),
-      create: async (data) => {
-        const entities = getEntity('payments');
-        const newEntity = { ...data, id: generateId(), created_date: new Date().toISOString() };
-        entities.push(newEntity);
-        saveEntity('payments', entities);
-        return newEntity;
-      }
-    },
-    RaiseRequest: {
-      create: async (data) => {
-        const entities = getEntity('raiseRequests');
-        const newEntity = { ...data, id: generateId(), created_date: new Date().toISOString() };
-        entities.push(newEntity);
-        saveEntity('raiseRequests', entities);
-        return newEntity;
-      }
-    }
+    Payment: createEntityMethods('payments'),
+    RaiseRequest: createEntityMethods('raiseRequests')
   }
 };
+
+// Export with multiple names for compatibility
+export const mockData = apiObject;
+export const mockApi = apiObject;
+export default apiObject;
 
 // Initialize on import
 initializeMockData();
