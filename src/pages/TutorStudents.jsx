@@ -5,7 +5,12 @@ import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Badge } from "@/components/ui/badge";
-import { Users, User, Bell, FileText, Loader2, Bus, MapPin } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Users, User, Bell, FileText, Loader2, Bus, MapPin, UserPlus, X, Send } from 'lucide-react';
 
 export default function TutorStudents() {
   const navigate = useNavigate();
@@ -13,6 +18,20 @@ export default function TutorStudents() {
   const [students, setStudents] = useState([]);
   const [buses, setBuses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showRegistrationDialog, setShowRegistrationDialog] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    class: '',
+    age: '',
+    gender: 'Fille',
+    parentRelation: '',
+    neighborhood: '',
+    transportType: 'Aller-Retour',
+    subscription: 'Mensuel (300 DH)'
+  });
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -39,6 +58,67 @@ export default function TutorStudents() {
     }
   };
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name, value) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      const studentData = {
+        ...formData,
+        age: parseInt(formData.age),
+        tutorId: currentUser.id,
+        status: 'pending',
+        paymentStatus: 'unpaid'
+      };
+
+      await mockApi.entities.Student.create(studentData);
+      
+      // Create payment record
+      const amount = formData.subscription.includes('300') ? 300 : 2500;
+      const subscriptionType = formData.subscription.includes('Mensuel') ? 'mensuel' : 'annuel';
+      
+      await mockApi.entities.Payment.create({
+        studentId: studentData.id,
+        tutorId: currentUser.id,
+        amount,
+        subscriptionType,
+        transportType: formData.transportType,
+        status: 'pending'
+      });
+
+      alert('Demande d\'inscription envoyée avec succès!');
+      setShowRegistrationDialog(false);
+      resetForm();
+      loadData(currentUser.id);
+    } catch (error) {
+      console.error('Error submitting registration:', error);
+      alert('Erreur lors de l\'envoi de la demande');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      firstName: '',
+      lastName: '',
+      class: '',
+      age: '',
+      gender: 'Fille',
+      parentRelation: '',
+      neighborhood: '',
+      transportType: 'Aller-Retour',
+      subscription: 'Mensuel (300 DH)'
+    });
+  };
+
   const getBusInfo = (busId) => buses.find(b => b.id === busId);
 
   const columns = [
@@ -62,6 +142,26 @@ export default function TutorStudents() {
       label: 'Classe',
       render: (value) => (
         <Badge variant="outline" className="border-amber-300 text-amber-700">{value}</Badge>
+      )
+    },
+    {
+      key: 'age',
+      label: 'Âge',
+      render: (value) => <span>{value} ans</span>
+    },
+    {
+      key: 'gender',
+      label: 'Genre',
+      render: (value) => <span className="text-sm text-gray-600">{value}</span>
+    },
+    {
+      key: 'neighborhood',
+      label: 'Quartier',
+      render: (value) => (
+        <div className="flex items-center gap-1">
+          <MapPin className="w-3 h-3 text-gray-400" />
+          <span className="text-sm">{value}</span>
+        </div>
       )
     },
     {
@@ -135,7 +235,16 @@ export default function TutorStudents() {
       notifications={[]}
     >
       <div className="space-y-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Mes Élèves</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Mes Élèves</h1>
+          <Button
+            onClick={() => setShowRegistrationDialog(true)}
+            className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 shadow-lg"
+          >
+            <UserPlus className="w-4 h-4 mr-2" />
+            Nouvelle inscription
+          </Button>
+        </div>
 
         <DataTable
           columns={columns}
@@ -162,6 +271,171 @@ export default function TutorStudents() {
           emptyMessage="Aucun élève inscrit"
         />
       </div>
+
+      {/* Registration Dialog */}
+      <Dialog open={showRegistrationDialog} onOpenChange={setShowRegistrationDialog}>
+        <DialogContent className="max-w-xl p-0 gap-0">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900">Inscrire un élève</h2>
+            <button
+              onClick={() => setShowRegistrationDialog(false)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Form */}
+          <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+            {/* Prénom & Nom */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">Prénom</Label>
+                <Input
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className="border-gray-300 focus:border-amber-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">Nom</Label>
+                <Input
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className="border-gray-300 focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            {/* Classe & Âge */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">Classe</Label>
+                <Select value={formData.class} onValueChange={(v) => handleSelectChange('class', v)}>
+                  <SelectTrigger className="border-gray-300">
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1AP">1AP</SelectItem>
+                    <SelectItem value="2AP">2AP</SelectItem>
+                    <SelectItem value="3AP">3AP</SelectItem>
+                    <SelectItem value="4AP">4AP</SelectItem>
+                    <SelectItem value="5AP">5AP</SelectItem>
+                    <SelectItem value="6AP">6AP</SelectItem>
+                    <SelectItem value="1AC">1AC</SelectItem>
+                    <SelectItem value="2AC">2AC</SelectItem>
+                    <SelectItem value="3AC">3AC</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">Âge</Label>
+                <Input
+                  type="number"
+                  name="age"
+                  value={formData.age}
+                  onChange={handleChange}
+                  className="border-gray-300 focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            {/* Genre */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700">Genre</Label>
+              <Select value={formData.gender} onValueChange={(v) => handleSelectChange('gender', v)}>
+                <SelectTrigger className="border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Fille">Fille</SelectItem>
+                  <SelectItem value="Garçon">Garçon</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Lien de parenté */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700">Lien de parenté</Label>
+              <Input
+                name="parentRelation"
+                value={formData.parentRelation}
+                onChange={handleChange}
+                placeholder="Père, Mère, etc."
+                className="border-gray-300 focus:border-amber-500"
+              />
+            </div>
+
+            {/* Quartier */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700">Quartier</Label>
+              <Select value={formData.neighborhood} onValueChange={(v) => handleSelectChange('neighborhood', v)}>
+                <SelectTrigger className="border-gray-300">
+                  <SelectValue placeholder="Sélectionner le quartier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Hay Riad">Hay Riad</SelectItem>
+                  <SelectItem value="Agdal">Agdal</SelectItem>
+                  <SelectItem value="Souissi">Souissi</SelectItem>
+                  <SelectItem value="Aviation">Aviation</SelectItem>
+                  <SelectItem value="Hay Nahda">Hay Nahda</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Type de transport & Abonnement */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">Type de transport</Label>
+                <Select value={formData.transportType} onValueChange={(v) => handleSelectChange('transportType', v)}>
+                  <SelectTrigger className="border-gray-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Aller-Retour">Aller-Retour</SelectItem>
+                    <SelectItem value="Aller uniquement">Aller uniquement</SelectItem>
+                    <SelectItem value="Retour uniquement">Retour uniquement</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">Abonnement</Label>
+                <Select value={formData.subscription} onValueChange={(v) => handleSelectChange('subscription', v)}>
+                  <SelectTrigger className="border-gray-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Mensuel (300 DH)">Mensuel (300 DH)</SelectItem>
+                    <SelectItem value="Annuel (2500 DH)">Annuel (2500 DH)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              onClick={handleSubmit}
+              className="w-full py-6 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-semibold rounded-xl shadow-lg"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Envoi en cours...
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5 mr-2" />
+                  Envoyer la demande
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
