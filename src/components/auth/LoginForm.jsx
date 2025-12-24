@@ -40,7 +40,7 @@ export default function LoginForm({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-yellow-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-yellow-300 rounded-full blur-3xl opacity-20" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-amber-300 rounded-full blur-3xl opacity-20" />
       </div>
@@ -62,7 +62,7 @@ export default function LoginForm({
         <Card className="border-amber-100 shadow-2xl">
           <CardHeader className="text-center pb-2">
             <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center mb-4 shadow-lg">
-              {Icon && <Icon className="w-8 h-8 text-white" />}
+              <Icon className="w-8 h-8 text-white" />
             </div>
             <CardTitle className="text-2xl font-bold text-gray-900">{title}</CardTitle>
             <CardDescription className="text-gray-500">{description}</CardDescription>

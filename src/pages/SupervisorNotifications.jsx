@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,24 +10,6 @@ import { UserCog, Users, Bell, Loader2, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-
-const STORAGE_PREFIX = 'schoolbus_';
-
-const getNotifications = (userId, userType) => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}notifications`);
-  const notifications = data ? JSON.parse(data) : [];
-  return notifications.filter(n => n.recipientId === userId && n.recipientType === userType);
-};
-
-const updateNotification = (id, updates) => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}notifications`);
-  const notifications = data ? JSON.parse(data) : [];
-  const index = notifications.findIndex(n => n.id === id);
-  if (index !== -1) {
-    notifications[index] = { ...notifications[index], ...updates };
-    localStorage.setItem(`${STORAGE_PREFIX}notifications`, JSON.stringify(notifications));
-  }
-};
 
 export default function SupervisorNotifications() {
   const navigate = useNavigate();
@@ -44,9 +27,12 @@ export default function SupervisorNotifications() {
     loadNotifications(user.id);
   }, []);
 
-  const loadNotifications = (userId) => {
+  const loadNotifications = async (userId) => {
     try {
-      const data = getNotifications(userId, 'supervisor');
+      const data = await mockApi.entities.Notification.filter({ 
+        recipientId: userId, 
+        recipientType: 'supervisor' 
+      });
       setNotifications(data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -55,9 +41,9 @@ export default function SupervisorNotifications() {
     }
   };
 
-  const markAsRead = (notifId) => {
+  const markAsRead = async (notifId) => {
     try {
-      updateNotification(notifId, { read: true });
+      await mockApi.entities.Notification.update(notifId, { read: true });
       setNotifications(notifications.map(n => 
         n.id === notifId ? { ...n, read: true } : n
       ));

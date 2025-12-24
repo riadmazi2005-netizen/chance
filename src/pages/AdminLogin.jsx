@@ -3,17 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ShieldCheck } from 'lucide-react';
 import LoginForm from '@/components/auth/LoginForm';
-import { mockData } from '@/services/mockDataService';
+import { mockApi } from '@/services/mockData';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
 
   const handleLogin = async ({ identifier, password }) => {
-    const admins = await mockData.entities.Admin.list();
+    const admins = await mockApi.entities.Admin.list();
     
     // If no admin exists, create default one
     if (admins.length === 0) {
-      await mockData.entities.Admin.create({
+      await mockApi.entities.Admin.create({
         username: 'admin',
         password: 'admin123',
         fullName: 'Administrateur Principal'

@@ -1,23 +1,16 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Users } from 'lucide-react';
 import LoginForm from '@/components/auth/LoginForm';
-
-const STORAGE_PREFIX = 'schoolbus_';
-
-const getTutors = () => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}tutors`);
-  return data ? JSON.parse(data) : [];
-};
+import { mockApi } from '@/services/mockData';
 
 export default function TutorLogin() {
   const navigate = useNavigate();
 
   const handleLogin = async ({ identifier, password }) => {
     // Get all tutors
-    const tutors = getTutors();
+    const tutors = await mockApi.entities.Tutor.list();
     
     // Find tutor by email or phone
     const tutor = tutors.find(t => 

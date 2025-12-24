@@ -1,17 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from "@/components/ui/button";
-import { Menu, X, LogOut, Bell, Bus } from 'lucide-react';
+import { 
+  Menu, X, LogOut, Bell, Home, Users, Bus, MapPin, 
+  CreditCard, AlertTriangle, BarChart3, Settings, UserCog,
+  FileText, PlusCircle, ClipboardList, ArrowLeft
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminSidebar from './AdminSidebar';
 
 export default function DashboardLayout({ 
   children, 
-  userType = 'Utilisateur', 
-  userName = 'Utilisateur',
+  userType, 
+  userName,
   menuItems = [],
-  notifications = []
+  notifications = [],
+  showBackButton = true
 }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -22,19 +27,11 @@ export default function DashboardLayout({
     navigate(createPageUrl('Home'));
   };
 
+  const handleBack = () => {
+    navigate(-1);
+  };
+
   const unreadCount = notifications.filter(n => !n.read).length;
-
-  // Close notifications dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (showNotifications && !e.target.closest('.notifications-container')) {
-        setShowNotifications(false);
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [showNotifications]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-yellow-50">
@@ -45,7 +42,6 @@ export default function DashboardLayout({
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="lg:hidden p-2 rounded-xl hover:bg-amber-100 transition-colors"
-              aria-label="Toggle menu"
             >
               {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -63,19 +59,15 @@ export default function DashboardLayout({
 
           <div className="flex items-center gap-3">
             {/* Notifications */}
-            <div className="relative notifications-container">
+            <div className="relative">
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowNotifications(!showNotifications);
-                }}
+                onClick={() => setShowNotifications(!showNotifications)}
                 className="relative p-2 rounded-xl hover:bg-amber-100 transition-colors"
-                aria-label="Notifications"
               >
                 <Bell className="w-5 h-5 text-gray-600" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {unreadCount}
                   </span>
                 )}
               </button>
@@ -121,7 +113,6 @@ export default function DashboardLayout({
                 variant="ghost"
                 size="icon"
                 className="text-gray-500 hover:text-red-600 hover:bg-red-50"
-                aria-label="Déconnexion"
               >
                 <LogOut className="w-5 h-5" />
               </Button>
@@ -154,7 +145,7 @@ export default function DashboardLayout({
                       : 'text-gray-600 hover:bg-amber-50 hover:text-amber-700'}
                   `}
                 >
-                  {item.icon && <item.icon className="w-5 h-5" />}
+                  <item.icon className="w-5 h-5" />
                   <span className="font-medium">{item.label}</span>
                 </Link>
               ))}
@@ -172,6 +163,16 @@ export default function DashboardLayout({
 
         {/* Main Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-73px)]">
+          {showBackButton && (
+            <Button
+              onClick={handleBack}
+              variant="outline"
+              className="mb-4 border-amber-300 text-amber-700 hover:bg-amber-50"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Retour
+            </Button>
+          )}
           {children}
         </main>
       </div>

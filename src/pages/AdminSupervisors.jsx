@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockData } from '@/services/mockDataService';
+import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Button } from "@/components/ui/button";
@@ -51,8 +51,8 @@ export default function AdminSupervisors() {
   const loadData = async () => {
     try {
       const [supervisorsData, busesData] = await Promise.all([
-        mockData.entities.Supervisor.list(),
-        mockData.entities.Bus.list()
+        mockApi.entities.Supervisor.list(),
+        mockApi.entities.Bus.list()
       ]);
       
       const supervisorsWithBus = supervisorsData.map(s => {
@@ -79,9 +79,9 @@ export default function AdminSupervisors() {
 
       if (editingSupervisor) {
         const { password, ...updateData } = data;
-        await mockData.entities.Supervisor.update(editingSupervisor.id, password ? data : updateData);
+        await mockApi.entities.Supervisor.update(editingSupervisor.id, password ? data : updateData);
       } else {
-        await mockData.entities.Supervisor.create(data);
+        await mockApi.entities.Supervisor.create(data);
       }
 
       setShowDialog(false);
@@ -97,7 +97,7 @@ export default function AdminSupervisors() {
   const deleteSupervisor = async (supervisor) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce responsable ?')) return;
     try {
-      await mockData.entities.Supervisor.delete(supervisor.id);
+      await mockApi.entities.Supervisor.delete(supervisor.id);
       loadData();
     } catch (error) {
       console.error('Error deleting supervisor:', error);

@@ -15,7 +15,7 @@ import { motion } from 'framer-motion';
 
 export default function DataTable({
   columns,
-  data = [],
+  data,
   searchable = true,
   searchPlaceholder = "Rechercher...",
   filters = [],

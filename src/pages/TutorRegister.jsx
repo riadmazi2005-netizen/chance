@@ -7,26 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Users, ArrowLeft, Eye, EyeOff, Loader2, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const STORAGE_PREFIX = 'schoolbus_';
-
-const generateId = () => {
-  return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-};
-
-const getTutors = () => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}tutors`);
-  return data ? JSON.parse(data) : [];
-};
-
-const createTutor = (tutorData) => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}tutors`);
-  const tutors = data ? JSON.parse(data) : [];
-  const newTutor = { ...tutorData, id: generateId() };
-  tutors.push(newTutor);
-  localStorage.setItem(`${STORAGE_PREFIX}tutors`, JSON.stringify(tutors));
-  return newTutor;
-};
+import { mockApi } from '@/services/mockData';
 
 export default function TutorRegister() {
   const navigate = useNavigate();
@@ -50,7 +31,7 @@ export default function TutorRegister() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -63,7 +44,7 @@ export default function TutorRegister() {
 
     try {
       // Check if email or phone already exists
-      const existingTutors = getTutors();
+      const existingTutors = await mockApi.entities.Tutor.list();
       const exists = existingTutors.find(t => t.email === formData.email || t.phone === formData.phone);
       
       if (exists) {
@@ -72,7 +53,7 @@ export default function TutorRegister() {
 
       // Create tutor
       const { confirmPassword, ...tutorData } = formData;
-      createTutor(tutorData);
+      await mockApi.entities.Tutor.create(tutorData);
       
       setSuccess(true);
       setTimeout(() => {

@@ -84,8 +84,8 @@ export default function Home() {
             >
               <div className="absolute inset-0 bg-gradient-to-t from-amber-100 to-transparent rounded-3xl" />
               <img 
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6949a4ae562ce218e6ca0074/46a0f0e16_image.png" 
-                alt="School Bus"
+                  src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6949a4ae562ce218e6ca0074/46a0f0e16_image.png" 
+              alt="School Bus"
                 className="w-full h-64 sm:h-80 object-cover rounded-3xl shadow-2xl"
               />
               <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg">

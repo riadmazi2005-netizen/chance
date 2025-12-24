@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Bus, Users, UserCog, Bell, AlertTriangle, DollarSign,
-  Phone, Clock, Send, Loader2, User, FileText, Eye
+  Phone, Clock, Send, Loader2, User, FileText, Eye, CheckCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -173,6 +173,7 @@ export default function SupervisorDashboard() {
 
   const menuItems = [
     { label: 'Tableau de bord', path: 'SupervisorDashboard', icon: UserCog, active: true },
+    { label: 'Présences', path: 'SupervisorAttendance', icon: CheckCircle },
     { label: 'Élèves', path: 'SupervisorStudents', icon: Users },
     { label: 'Notifications', path: 'SupervisorNotifications', icon: Bell },
   ];

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockData } from '@/services/mockDataService';
+import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Button } from "@/components/ui/button";
@@ -55,10 +55,10 @@ export default function AdminBuses() {
   const loadData = async () => {
     try {
       const [busesData, driversData, supervisorsData, routesData] = await Promise.all([
-        mockData.entities.Bus.list(),
-        mockData.entities.Driver.list(),
-        mockData.entities.Supervisor.list(),
-        mockData.entities.Route.list()
+        mockApi.entities.Bus.list(),
+        mockApi.entities.Driver.list(),
+        mockApi.entities.Supervisor.list(),
+        mockApi.entities.Route.list()
       ]);
       
       const busesWithDetails = busesData.map(b => {
@@ -93,9 +93,9 @@ export default function AdminBuses() {
       };
 
       if (editingBus) {
-        await mockData.entities.Bus.update(editingBus.id, data);
+        await mockApi.entities.Bus.update(editingBus.id, data);
       } else {
-        await mockData.entities.Bus.create(data);
+        await mockApi.entities.Bus.create(data);
       }
 
       setShowDialog(false);
@@ -111,7 +111,7 @@ export default function AdminBuses() {
   const deleteBus = async (bus) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce bus ?')) return;
     try {
-      await mockData.entities.Bus.delete(bus.id);
+      await mockApi.entities.Bus.delete(bus.id);
       loadData();
     } catch (error) {
       console.error('Error deleting bus:', error);
@@ -287,7 +287,7 @@ export default function AdminBuses() {
                   <SelectValue placeholder="Sélectionner un chauffeur" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun</SelectItem>
+                  <SelectItem value={null}>Aucun</SelectItem>
                   {drivers.map(d => (
                     <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>
                   ))}
@@ -302,7 +302,7 @@ export default function AdminBuses() {
                   <SelectValue placeholder="Sélectionner un responsable" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun</SelectItem>
+                  <SelectItem value={null}>Aucun</SelectItem>
                   {supervisors.map(s => (
                     <SelectItem key={s.id} value={s.id}>{s.firstName} {s.lastName}</SelectItem>
                   ))}
@@ -317,7 +317,7 @@ export default function AdminBuses() {
                   <SelectValue placeholder="Sélectionner un trajet" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun</SelectItem>
+                  <SelectItem value={null}>Aucun</SelectItem>
                   {routes.map(r => (
                     <SelectItem key={r.id} value={r.id}>{r.routeId} - {r.terminus}</SelectItem>
                   ))}

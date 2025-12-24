@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockData } from '@/services/mockDataService';
+import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Button } from "@/components/ui/button";
@@ -45,9 +45,9 @@ export default function AdminRegistrations() {
   const loadData = async () => {
     try {
       const [studentsData, busesData, tutorsData] = await Promise.all([
-        mockData.entities.Student.filter({ status: 'pending' }),
-        mockData.entities.Bus.list(),
-        mockData.entities.Tutor.list()
+        mockApi.entities.Student.filter({ status: 'pending' }),
+        mockApi.entities.Bus.list(),
+        mockApi.entities.Tutor.list()
       ]);
       
       const studentsWithTutors = studentsData.map(s => {
@@ -66,22 +66,17 @@ export default function AdminRegistrations() {
   };
 
   const approveStudent = async () => {
-    if (!selectedBus || !selectedGroup) return;
     setSubmitting(true);
     
     try {
-      const bus = buses.find(b => b.id === selectedBus);
-      
-      await mockData.entities.Student.update(selectedStudent.id, {
-        status: 'approved',
-        busId: selectedBus,
-        busGroup: selectedGroup,
-        routeId: bus?.routeId
+      // Update student status to approved WITHOUT bus assignment
+      await mockApi.entities.Student.update(selectedStudent.id, {
+        status: 'approved'
       });
 
       // Create payment record
       const amount = selectedStudent.subscriptionType === 'annuel' ? 3000 : 300;
-      await mockData.entities.Payment.create({
+      await mockApi.entities.Payment.create({
         studentId: selectedStudent.id,
         tutorId: selectedStudent.tutorId,
         amount,
@@ -91,12 +86,12 @@ export default function AdminRegistrations() {
       });
 
       // Notify tutor
-      await mockData.entities.Notification.create({
+      await mockApi.entities.Notification.create({
         recipientId: selectedStudent.tutorId,
         recipientType: 'tutor',
         type: 'validation',
         title: 'Inscription validée !',
-        message: `L'inscription de ${selectedStudent.firstName} ${selectedStudent.lastName} a été validée. Veuillez procéder au paiement.`,
+        message: `L'inscription de ${selectedStudent.firstName} ${selectedStudent.lastName} a été validée. Veuillez procéder au paiement de ${amount} DH à l'école pour finaliser l'inscription.`,
         senderId: 'admin',
         senderType: 'admin'
       });
@@ -117,9 +112,9 @@ export default function AdminRegistrations() {
     if (!confirm('Êtes-vous sûr de vouloir refuser cette inscription ?')) return;
     
     try {
-      await mockData.entities.Student.update(student.id, { status: 'rejected' });
+      await mockApi.entities.Student.update(student.id, { status: 'rejected' });
 
-      await mockData.entities.Notification.create({
+      await mockApi.entities.Notification.create({
         recipientId: student.tutorId,
         recipientType: 'tutor',
         type: 'validation',
@@ -258,41 +253,21 @@ export default function AdminRegistrations() {
                 <p className="text-sm text-gray-600">Classe: {selectedStudent.class}</p>
                 <p className="text-sm text-gray-600">Quartier: {selectedStudent.quarter}</p>
                 <p className="text-sm text-gray-600">Adresse: {selectedStudent.address}</p>
+                <p className="text-sm font-semibold text-amber-700 mt-2">
+                  Montant: {selectedStudent.subscriptionType === 'annuel' ? '3000 DH' : '300 DH'}
+                </p>
               </div>
 
-              <div className="space-y-2">
-                <Label>Affecter au bus</Label>
-                <Select value={selectedBus} onValueChange={setSelectedBus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un bus" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {buses.filter(b => b.status === 'en_service').map(bus => (
-                      <SelectItem key={bus.id} value={bus.id}>
-                        {bus.busId} (Capacité: {bus.capacity})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Groupe</Label>
-                <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un groupe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A">Groupe A (07h00-07h30 / 16h30-17h00)</SelectItem>
-                    <SelectItem value="B">Groupe B (07h30-08h00 / 17h30-18h00)</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  ℹ️ L'affectation au bus sera faite après validation du paiement
+                </p>
               </div>
 
               <Button 
                 onClick={approveStudent}
                 className="w-full bg-gradient-to-r from-green-500 to-emerald-500"
-                disabled={submitting || !selectedBus || !selectedGroup}
+                disabled={submitting}
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
                 Valider l'inscription

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,24 +10,6 @@ import { Users, User, Bell, FileText, Loader2, CheckCircle, Clock, AlertTriangle
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-
-const STORAGE_PREFIX = 'schoolbus_';
-
-const getNotifications = (userId, userType) => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}notifications`);
-  const notifications = data ? JSON.parse(data) : [];
-  return notifications.filter(n => n.recipientId === userId && n.recipientType === userType);
-};
-
-const updateNotification = (id, updates) => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}notifications`);
-  const notifications = data ? JSON.parse(data) : [];
-  const index = notifications.findIndex(n => n.id === id);
-  if (index !== -1) {
-    notifications[index] = { ...notifications[index], ...updates };
-    localStorage.setItem(`${STORAGE_PREFIX}notifications`, JSON.stringify(notifications));
-  }
-};
 
 export default function TutorNotifications() {
   const navigate = useNavigate();
@@ -44,9 +27,12 @@ export default function TutorNotifications() {
     loadNotifications(user.id);
   }, []);
 
-  const loadNotifications = (tutorId) => {
+  const loadNotifications = async (tutorId) => {
     try {
-      const data = getNotifications(tutorId, 'tutor');
+      const data = await mockApi.entities.Notification.filter({ 
+        recipientId: tutorId, 
+        recipientType: 'tutor' 
+      });
       setNotifications(data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -55,9 +41,9 @@ export default function TutorNotifications() {
     }
   };
 
-  const markAsRead = (notifId) => {
+  const markAsRead = async (notifId) => {
     try {
-      updateNotification(notifId, { read: true });
+      await mockApi.entities.Notification.update(notifId, { read: true });
       setNotifications(notifications.map(n => 
         n.id === notifId ? { ...n, read: true } : n
       ));

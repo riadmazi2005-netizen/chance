@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockData } from '@/services/mockDataService';
+import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Badge } from "@/components/ui/badge";
@@ -33,9 +33,9 @@ export default function AdminStudents() {
   const loadData = async () => {
     try {
       const [studentsData, busesData, tutorsData] = await Promise.all([
-        mockData.entities.Student.filter({ status: 'approved' }),
-        mockData.entities.Bus.list(),
-        mockData.entities.Tutor.list()
+        mockApi.entities.Student.filter({ status: 'approved' }),
+        mockApi.entities.Bus.list(),
+        mockApi.entities.Tutor.list()
       ]);
       
       const studentsWithDetails = studentsData.map(s => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockData } from '@/services/mockDataService';
+import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Button } from "@/components/ui/button";
@@ -54,9 +54,9 @@ export default function AdminAccidents() {
   const loadData = async () => {
     try {
       const [accidentsData, driversData, busesData] = await Promise.all([
-        mockData.entities.Accident.list(),
-        mockData.entities.Driver.list(),
-        mockData.entities.Bus.list()
+        mockApi.entities.Accident.list(),
+        mockApi.entities.Driver.list(),
+        mockApi.entities.Bus.list()
       ]);
       
       const accidentsWithDetails = accidentsData.map(a => {
@@ -83,19 +83,19 @@ export default function AdminAccidents() {
     setSubmitting(true);
     try {
       // Create accident record
-      await mockData.entities.Accident.create(formData);
+      await mockApi.entities.Accident.create(formData);
 
       // Get driver's current accident count
       const driverAccidents = accidents.filter(a => a.driverId === formData.driverId);
       const newCount = driverAccidents.length + 1;
 
       // Update driver's accident count
-      await mockData.entities.Driver.update(formData.driverId, {
+      await mockApi.entities.Driver.update(formData.driverId, {
         accidentCount: newCount
       });
 
       // Notify driver
-      await mockData.entities.Notification.create({
+      await mockApi.entities.Notification.create({
         recipientId: formData.driverId,
         recipientType: 'driver',
         type: 'accident',
@@ -109,7 +109,7 @@ export default function AdminAccidents() {
 
       // If 3 accidents, fire the driver
       if (newCount >= 3) {
-        await mockData.entities.Driver.update(formData.driverId, {
+        await mockApi.entities.Driver.update(formData.driverId, {
           status: 'fired'
         });
       }

@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockData } from '@/services/mockDataService';
+import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ShieldCheck, Users, Bus, MapPin, CreditCard, AlertTriangle,
-  Bell, FileText, UserCog, Loader2, CheckCircle, Trash2, BarChart3
+  Bell, FileText, UserCog, Loader2, CheckCircle, DollarSign, BarChart3
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -17,6 +19,7 @@ export default function AdminNotifications() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [raiseRequests, setRaiseRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,41 +34,65 @@ export default function AdminNotifications() {
 
   const loadData = async () => {
     try {
-      const notifs = await mockData.entities.Notification.filter({ recipientType: 'admin' });
-      setNotifications(notifs.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+      const [notifsData, raiseData, driversData, supervisorsData] = await Promise.all([
+        mockApi.entities.Notification.filter({ recipientType: 'admin' }),
+        mockApi.entities.RaiseRequest.filter({ status: 'pending' }),
+        mockApi.entities.Driver.list(),
+        mockApi.entities.Supervisor.list()
+      ]);
+      
+      const raiseWithDetails = raiseData.map(r => {
+        if (r.requesterType === 'driver') {
+          const driver = driversData.find(d => d.id === r.requesterId);
+          return { ...r, requesterName: driver ? `${driver.firstName} ${driver.lastName}` : '-' };
+        } else {
+          const supervisor = supervisorsData.find(s => s.id === r.requesterId);
+          return { ...r, requesterName: supervisor ? `${supervisor.firstName} ${supervisor.lastName}` : '-' };
+        }
+      });
+      
+      setNotifications(notifsData.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+      setRaiseRequests(raiseWithDetails);
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const markAsRead = async (notificationId) => {
+  const markAsRead = async (notifId) => {
     try {
-      await mockData.entities.Notification.update(notificationId, { read: true });
-      loadData();
+      await mockApi.entities.Notification.update(notifId, { read: true });
+      setNotifications(notifications.map(n => 
+        n.id === notifId ? { ...n, read: true } : n
+      ));
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
   };
 
-  const deleteNotification = async (notificationId) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette notification ?')) return;
+  const handleRaiseRequest = async (request, approved) => {
     try {
-      await mockData.entities.Notification.delete(notificationId);
-      loadData();
-    } catch (error) {
-      console.error('Error deleting notification:', error);
-    }
-  };
+      await mockApi.entities.RaiseRequest.update(request.id, {
+        status: approved ? 'approved' : 'rejected'
+      });
 
-  const markAllAsRead = async () => {
-    try {
-      const unreadNotifs = notifications.filter(n => !n.read);
-      await Promise.all(unreadNotifs.map(n => mockData.entities.Notification.update(n.id, { read: true })));
+      // Notify requester
+      await mockApi.entities.Notification.create({
+        recipientId: request.requesterId,
+        recipientType: request.requesterType,
+        type: 'general',
+        title: approved ? 'Demande d\'augmentation approuvée' : 'Demande d\'augmentation refusée',
+        message: approved 
+          ? 'Votre demande d\'augmentation a été approuvée. Contactez l\'administration pour plus de détails.'
+          : 'Votre demande d\'augmentation a été refusée.',
+        senderId: 'admin',
+        senderType: 'admin'
+      });
+
       loadData();
     } catch (error) {
-      console.error('Error marking all as read:', error);
+      console.error('Error handling raise request:', error);
     }
   };
 
@@ -91,8 +118,6 @@ export default function AdminNotifications() {
     );
   }
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
   return (
     <DashboardLayout
       userType="Espace Administrateur"
@@ -101,91 +126,139 @@ export default function AdminNotifications() {
       notifications={notifications}
     >
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Notifications</h1>
-            <p className="text-gray-500 mt-1">{unreadCount} notification(s) non lue(s)</p>
-          </div>
-          {unreadCount > 0 && (
-            <Button 
-              onClick={markAllAsRead}
-              variant="outline"
-              className="border-amber-300"
-            >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Tout marquer comme lu
-            </Button>
-          )}
-        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Notifications & Demandes</h1>
 
-        {notifications.length > 0 ? (
-          <div className="space-y-3">
-            {notifications.map((notif) => (
-              <Card 
-                key={notif.id} 
-                className={`border-amber-100 ${!notif.read ? 'bg-amber-50/30' : ''}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        notif.type === 'accident' ? 'bg-red-100' :
-                        notif.type === 'validation' ? 'bg-green-100' :
-                        notif.type === 'payment' ? 'bg-blue-100' :
-                        'bg-amber-100'
-                      }`}>
-                        {notif.type === 'accident' ? <AlertTriangle className="w-5 h-5 text-red-600" /> :
-                         notif.type === 'validation' ? <CheckCircle className="w-5 h-5 text-green-600" /> :
-                         notif.type === 'payment' ? <CreditCard className="w-5 h-5 text-blue-600" /> :
-                         <Bell className="w-5 h-5 text-amber-600" />}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-900">{notif.title}</h3>
-                          {!notif.read && (
-                            <Badge className="bg-amber-500 text-white text-xs">Nouveau</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600 mb-2">{notif.message}</p>
-                        <p className="text-xs text-gray-400">
-                          {format(new Date(notif.created_date), 'd MMMM yyyy à HH:mm', { locale: fr })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {!notif.read && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => markAsRead(notif.id)}
-                          className="border-green-300 text-green-600"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => deleteNotification(notif.id)}
-                        className="border-red-300 text-red-600"
+        <Tabs defaultValue="notifications">
+          <TabsList className="bg-amber-100">
+            <TabsTrigger value="notifications">
+              Notifications ({notifications.filter(n => !n.read).length})
+            </TabsTrigger>
+            <TabsTrigger value="raises">
+              Demandes d'augmentation ({raiseRequests.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="notifications" className="mt-4">
+            <Card className="border-amber-100 shadow-lg">
+              <CardContent className="p-0">
+                {notifications.length > 0 ? (
+                  <div className="divide-y divide-amber-50">
+                    {notifications.map((notif, idx) => (
+                      <motion.div
+                        key={notif.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className={`p-4 sm:p-6 hover:bg-amber-50/30 transition-colors ${!notif.read ? 'bg-amber-50/50' : ''}`}
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                        <div className="flex items-start gap-4">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!notif.read ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>
+                            <Bell className="w-5 h-5" />
+                          </div>
+                          
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold text-gray-900">{notif.title}</h3>
+                                  <Badge variant="outline" className="text-xs">{notif.type}</Badge>
+                                </div>
+                                <p className="text-gray-500 text-sm mt-1">{notif.message}</p>
+                              </div>
+                              {!notif.read && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => markAsRead(notif.id)}
+                                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-100"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                            
+                            <p className="text-xs text-gray-400 mt-2">
+                              {notif.created_date && format(new Date(notif.created_date), "d MMMM yyyy à HH:mm", { locale: fr })}
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card className="border-amber-100">
-            <CardContent className="p-12 text-center">
-              <Bell className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-semibold text-gray-600 mb-2">Aucune notification</h3>
-              <p className="text-gray-500">Vous n'avez pas encore reçu de notifications</p>
-            </CardContent>
-          </Card>
-        )}
+                ) : (
+                  <div className="p-12 text-center text-gray-500">
+                    <Bell className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg">Aucune notification</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="raises" className="mt-4">
+            <Card className="border-amber-100 shadow-lg">
+              <CardContent className="p-0">
+                {raiseRequests.length > 0 ? (
+                  <div className="divide-y divide-amber-50">
+                    {raiseRequests.map((request, idx) => (
+                      <motion.div
+                        key={request.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="p-4 sm:p-6"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-green-600">
+                              <DollarSign className="w-5 h-5" />
+                            </div>
+                            
+                            <div>
+                              <h3 className="font-semibold text-gray-900">{request.requesterName}</h3>
+                              <Badge variant="outline" className="text-xs mt-1">
+                                {request.requesterType === 'driver' ? 'Chauffeur' : 'Responsable Bus'}
+                              </Badge>
+                              <p className="text-sm text-gray-600 mt-2">
+                                Salaire actuel: <span className="font-semibold">{request.currentSalary || 0} DH</span>
+                              </p>
+                              <p className="text-sm text-gray-500 mt-2">
+                                <span className="font-medium">Raisons:</span> {request.reasons}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleRaiseRequest(request, true)}
+                              className="bg-green-500 hover:bg-green-600"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRaiseRequest(request, false)}
+                              className="border-red-300 text-red-600"
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-12 text-center text-gray-500">
+                    <DollarSign className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg">Aucune demande d'augmentation</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

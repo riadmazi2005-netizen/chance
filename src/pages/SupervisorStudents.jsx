@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Badge } from "@/components/ui/badge";
@@ -16,36 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserCog, Users, Bell, Loader2, Phone, Edit, Save } from 'lucide-react';
 
-const STORAGE_PREFIX = 'schoolbus_';
 const CLASSES = ['1AP', '2AP', '3AP', '4AP', '5AP', '6AP', '1AC', '2AC', '3AC', 'TC', '1BAC', '2BAC'];
 const QUARTERS = ['Hay Riad', 'Agdal', 'Hassan', 'Océan', 'Yacoub El Mansour', 'Akkari', 'Souissi'];
-
-const getBuses = (supervisorId) => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}buses`);
-  const buses = data ? JSON.parse(data) : [];
-  return buses.filter(b => b.supervisorId === supervisorId);
-};
-
-const getStudents = (busId) => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}students`);
-  const students = data ? JSON.parse(data) : [];
-  return students.filter(s => s.busId === busId && s.status === 'approved');
-};
-
-const getTutors = () => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}tutors`);
-  return data ? JSON.parse(data) : [];
-};
-
-const updateStudent = (id, updates) => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}students`);
-  const students = data ? JSON.parse(data) : [];
-  const index = students.findIndex(s => s.id === id);
-  if (index !== -1) {
-    students[index] = { ...students[index], ...updates };
-    localStorage.setItem(`${STORAGE_PREFIX}students`, JSON.stringify(students));
-  }
-};
 
 export default function SupervisorStudents() {
   const navigate = useNavigate();
@@ -67,15 +40,15 @@ export default function SupervisorStudents() {
     loadData(user);
   }, []);
 
-  const loadData = (user) => {
+  const loadData = async (user) => {
     try {
-      const buses = getBuses(user.id);
+      const buses = await mockApi.entities.Bus.filter({ supervisorId: user.id });
       const myBus = buses[0];
       setBus(myBus);
 
       if (myBus) {
-        const allStudents = getStudents(myBus.id);
-        const tutors = getTutors();
+        const allStudents = await mockApi.entities.Student.filter({ busId: myBus.id, status: 'approved' });
+        const tutors = await mockApi.entities.Tutor.list();
         const studentsWithTutors = allStudents.map(s => {
           const tutor = tutors.find(t => t.id === s.tutorId);
           return { ...s, tutorPhone: tutor?.phone, tutorName: `${tutor?.firstName} ${tutor?.lastName}` };
@@ -89,10 +62,10 @@ export default function SupervisorStudents() {
     }
   };
 
-  const handleEditStudent = () => {
+  const handleEditStudent = async () => {
     setSubmitting(true);
     try {
-      updateStudent(selectedStudent.id, {
+      await mockApi.entities.Student.update(selectedStudent.id, {
         firstName: selectedStudent.firstName,
         lastName: selectedStudent.lastName,
         class: selectedStudent.class,

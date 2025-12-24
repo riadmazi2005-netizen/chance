@@ -1,23 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Badge } from "@/components/ui/badge";
 import { Users, User, Bell, FileText, Loader2, Bus, MapPin } from 'lucide-react';
-
-const STORAGE_PREFIX = 'schoolbus_';
-
-const getStudents = (tutorId) => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}students`);
-  const students = data ? JSON.parse(data) : [];
-  return students.filter(s => s.tutorId === tutorId);
-};
-
-const getBuses = () => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}buses`);
-  return data ? JSON.parse(data) : [];
-};
 
 export default function TutorStudents() {
   const navigate = useNavigate();
@@ -36,11 +24,12 @@ export default function TutorStudents() {
     loadData(user.id);
   }, []);
 
-  const loadData = (tutorId) => {
+  const loadData = async (tutorId) => {
     try {
-      const studentsData = getStudents(tutorId);
-      const busesData = getBuses();
-      
+      const [studentsData, busesData] = await Promise.all([
+        mockApi.entities.Student.filter({ tutorId }),
+        mockApi.entities.Bus.list()
+      ]);
       setStudents(studentsData);
       setBuses(busesData);
     } catch (error) {
@@ -85,88 +74,94 @@ export default function TutorStudents() {
     {
       key: 'busId',
       label: 'Bus',
-      render: (value) => {const bus = getBusInfo(value);
-    return bus ? (
-      <div className="flex items-center gap-2">
-        <Bus className="w-4 h-4 text-gray-400" />
-        <span>{bus.busId}</span>
+      render: (value) => {
+        const bus = getBusInfo(value);
+        return bus ? (
+          <div className="flex items-center gap-2">
+            <Bus className="w-4 h-4 text-gray-400" />
+            <span>{bus.busId}</span>
+          </div>
+        ) : '-';
+      }
+    },
+    {
+      key: 'status',
+      label: 'Statut',
+      render: (value) => {
+        const styles = {
+          pending: 'bg-yellow-100 text-yellow-800',
+          approved: 'bg-green-100 text-green-800',
+          rejected: 'bg-red-100 text-red-800'
+        };
+        const labels = {
+          pending: 'En attente',
+          approved: 'Validée',
+          rejected: 'Refusée'
+        };
+        return <Badge className={styles[value]}>{labels[value]}</Badge>;
+      }
+    },
+    {
+      key: 'paymentStatus',
+      label: 'Paiement',
+      render: (value, student) => student.status === 'approved' ? (
+        <Badge className={value === 'paid' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}>
+          {value === 'paid' ? 'Payé' : 'Non payé'}
+        </Badge>
+      ) : '-'
+    }
+  ];
+
+  const menuItems = [
+    { label: 'Tableau de bord', path: 'TutorDashboard', icon: Users },
+    { label: 'Mes Élèves', path: 'TutorStudents', icon: User, active: true },
+    { label: 'Notifications', path: 'TutorNotifications', icon: Bell },
+    { label: 'Mon Profil', path: 'TutorProfile', icon: FileText },
+  ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-yellow-50">
+        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
       </div>
-    ) : '-';
+    );
   }
-},
-{
-  key: 'status',
-  label: 'Statut',
-  render: (value) => {
-    const styles = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800'
-    };
-    const labels = {
-      pending: 'En attente',
-      approved: 'Validée',
-      rejected: 'Refusée'
-    };
-    return <Badge className={styles[value]}>{labels[value]}</Badge>;
-  }
-},
-{
-  key: 'paymentStatus',
-  label: 'Paiement',
-  render: (value, student) => student.status === 'approved' ? (
-    <Badge className={value === 'paid' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}>
-      {value === 'paid' ? 'Payé' : 'Non payé'}
-    </Badge>
-  ) : '-'
-}];
-const menuItems = [
-{ label: 'Tableau de bord', path: 'TutorDashboard', icon: Users },
-{ label: 'Mes Élèves', path: 'TutorStudents', icon: User, active: true },
-{ label: 'Notifications', path: 'TutorNotifications', icon: Bell },
-{ label: 'Mon Profil', path: 'TutorProfile', icon: FileText },
-];
-if (loading) {
-return (
-<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-yellow-50">
-<Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-</div>
-);
-}
-return (
-<DashboardLayout
-userType="Espace Tuteur"
-userName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : ''}
-menuItems={menuItems}
-notifications={[]}
->
-<div className="space-y-6">
-<h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Mes Élèves</h1>
-<DataTable
-      columns={columns}
-      data={students}
-      searchPlaceholder="Rechercher un élève..."
-      filters={[
-        {
-          key: 'status',
-          label: 'Statut',
-          options: [
-            { value: 'pending', label: 'En attente' },
-            { value: 'approved', label: 'Validée' },
-            { value: 'rejected', label: 'Refusée' }
-          ]
-        },
-        {
-          key: 'class',
-          label: 'Classe',
-          options: ['1AP', '2AP', '3AP', '4AP', '5AP', '6AP', '1AC', '2AC', '3AC', 'TC', '1BAC', '2BAC'].map(c => ({
-            value: c, label: c
-          }))
-        }
-      ]}
-      emptyMessage="Aucun élève inscrit"
-    />
-  </div>
-</DashboardLayout>
-);
+
+  return (
+    <DashboardLayout
+      userType="Espace Tuteur"
+      userName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : ''}
+      menuItems={menuItems}
+      notifications={[]}
+    >
+      <div className="space-y-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Mes Élèves</h1>
+
+        <DataTable
+          columns={columns}
+          data={students}
+          searchPlaceholder="Rechercher un élève..."
+          filters={[
+            {
+              key: 'status',
+              label: 'Statut',
+              options: [
+                { value: 'pending', label: 'En attente' },
+                { value: 'approved', label: 'Validée' },
+                { value: 'rejected', label: 'Refusée' }
+              ]
+            },
+            {
+              key: 'class',
+              label: 'Classe',
+              options: ['1AP', '2AP', '3AP', '4AP', '5AP', '6AP', '1AC', '2AC', '3AC', 'TC', '1BAC', '2BAC'].map(c => ({
+                value: c, label: c
+              }))
+            }
+          ]}
+          emptyMessage="Aucun élève inscrit"
+        />
+      </div>
+    </DashboardLayout>
+  );
 }

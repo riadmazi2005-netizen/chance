@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,20 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, User, Bell, FileText, Save, Loader2, CheckCircle, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
-
-const STORAGE_PREFIX = 'schoolbus_';
-
-const updateTutor = (id, updates) => {
-  const data = localStorage.getItem(`${STORAGE_PREFIX}tutors`);
-  const tutors = data ? JSON.parse(data) : [];
-  const index = tutors.findIndex(t => t.id === id);
-  if (index !== -1) {
-    tutors[index] = { ...tutors[index], ...updates };
-    localStorage.setItem(`${STORAGE_PREFIX}tutors`, JSON.stringify(tutors));
-    return tutors[index];
-  }
-  return null;
-};
 
 export default function TutorProfile() {
   const navigate = useNavigate();
@@ -50,10 +37,10 @@ export default function TutorProfile() {
     setLoading(false);
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
     try {
-      updateTutor(currentUser.id, formData);
+      await mockApi.entities.Tutor.update(currentUser.id, formData);
       
       const updatedUser = { ...currentUser, ...formData };
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));

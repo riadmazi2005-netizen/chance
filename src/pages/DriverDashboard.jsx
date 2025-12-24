@@ -23,6 +23,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+const CLASSES = ['1AP', '2AP', '3AP', '4AP', '5AP', '6AP', '1AC', '2AC', '3AC', 'TC', '1BAC', '2BAC'];
+const QUARTERS = ['Hay Riad', 'Agdal', 'Hassan', 'Océan', 'Yacoub El Mansour', 'Akkari', 'Souissi'];
+
 export default function DriverDashboard() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
@@ -443,44 +446,45 @@ export default function DriverDashboard() {
               Envoyer la demande
             </Button>
           </div>
-          </DialogContent>
+        </DialogContent>
       </Dialog>
-  {/* Profile Dialog */}
-  <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Mon Profil</DialogTitle>
-      </DialogHeader>
-      
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label>Téléphone</Label>
-          <Input
-            value={profileData.phone}
-            onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-          />
-        </div>
 
-        <div className="space-y-2">
-          <Label>Email</Label>
-          <Input
-            type="email"
-            value={profileData.email}
-            onChange={(e) => setProfileData({...profileData, email: e.target.value})}
-          />
-        </div>
+      {/* Profile Dialog */}
+      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mon Profil</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Téléphone</Label>
+              <Input
+                value={profileData.phone}
+                onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+              />
+            </div>
 
-        <Button 
-          onClick={saveProfile}
-          className="w-full bg-gradient-to-r from-amber-500 to-yellow-500"
-          disabled={submitting}
-        >
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Enregistrer
-        </Button>
-      </div>
-    </DialogContent>
-  </Dialog>
-</DashboardLayout>
-);
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={profileData.email}
+                onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+              />
+            </div>
+
+            <Button 
+              onClick={saveProfile}
+              className="w-full bg-gradient-to-r from-amber-500 to-yellow-500"
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+              Enregistrer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </DashboardLayout>
+  );
 }
