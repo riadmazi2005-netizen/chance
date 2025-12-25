@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { tutorApi } from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +27,8 @@ export default function TutorStudents() {
   const loadData = async (tutorId) => {
     try {
       const [studentsData, busesData] = await Promise.all([
-        mockApi.entities.Student.filter({ tutorId }),
-        mockApi.entities.Bus.list()
+        tutorApi.entities.Student.filter({ tutorId }),
+        tutorApi.entities.Bus.list()
       ]);
       setStudents(studentsData);
       setBuses(busesData);

@@ -24,13 +24,16 @@ export default function AdminRegistrations() {
   const [currentUser, setCurrentUser] = useState(null);
   const [students, setStudents] = useState([]);
   const [buses, setBuses] = useState([]);
+  const [routes, setRoutes] = useState([]);
   const [tutors, setTutors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [showVerifyDialog, setShowVerifyDialog] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedBus, setSelectedBus] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [verifyInfo, setVerifyInfo] = useState(null);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -44,10 +47,12 @@ export default function AdminRegistrations() {
 
   const loadData = async () => {
     try {
-      const [studentsData, busesData, tutorsData] = await Promise.all([
+      const [studentsData, busesData, tutorsData, routesData, allStudentsData] = await Promise.all([
         mockApi.entities.Student.filter({ status: 'pending' }),
         mockApi.entities.Bus.list(),
-        mockApi.entities.Tutor.list()
+        mockApi.entities.Tutor.list(),
+        mockApi.entities.Route.list(),
+        mockApi.entities.Student.list()
       ]);
       
       const studentsWithTutors = studentsData.map(s => {
@@ -55,8 +60,22 @@ export default function AdminRegistrations() {
         return { ...s, tutorName: tutor ? `${tutor.firstName} ${tutor.lastName}` : '-', tutorPhone: tutor?.phone };
       });
       
+      // Calculate bus capacity usage
+      const busCapacityMap = {};
+      busesData.forEach(bus => {
+        const studentsInBus = allStudentsData.filter(s => s.busId === bus.id && s.status === 'approved');
+        const route = routesData.find(r => r.busId === bus.id);
+        busCapacityMap[bus.id] = {
+          used: studentsInBus.length,
+          total: bus.capacity,
+          available: bus.capacity - studentsInBus.length,
+          route: route
+        };
+      });
+      
       setStudents(studentsWithTutors);
-      setBuses(busesData);
+      setBuses(busesData.map(b => ({ ...b, capacityInfo: busCapacityMap[b.id] })));
+      setRoutes(routesData);
       setTutors(tutorsData);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -74,24 +93,46 @@ export default function AdminRegistrations() {
         status: 'approved'
       });
 
-      // Create payment record
-      const amount = selectedStudent.subscriptionType === 'annuel' ? 3000 : 300;
+      // Calculate family discount
+      const allStudents = await mockApi.entities.Student.list();
+      const tutorStudents = allStudents.filter(s => 
+        s.tutorId === selectedStudent.tutorId && 
+        (s.status === 'approved' || s.id === selectedStudent.id)
+      );
+      
+      const studentCount = tutorStudents.length;
+      let discountPercentage = 0;
+      if (studentCount === 2) discountPercentage = 10;
+      else if (studentCount >= 3) discountPercentage = 30;
+
+      // Create payment record with discount
+      const baseAmount = selectedStudent.subscriptionType === 'annuel' ? 3000 : 300;
+      const discountAmount = (baseAmount * discountPercentage) / 100;
+      const finalAmount = baseAmount - discountAmount;
+
       await mockApi.entities.Payment.create({
         studentId: selectedStudent.id,
         tutorId: selectedStudent.tutorId,
-        amount,
+        amount: baseAmount,
+        discountPercentage,
+        discountAmount,
+        finalAmount,
         transportType: selectedStudent.transportType,
         subscriptionType: selectedStudent.subscriptionType,
         status: 'pending'
       });
 
       // Notify tutor
+      const discountMessage = discountPercentage > 0 
+        ? ` 🎉 Réduction familiale appliquée : -${discountPercentage}% (${discountAmount} DH). Montant à payer : ${finalAmount} DH.`
+        : ` Montant à payer : ${finalAmount} DH.`;
+
       await mockApi.entities.Notification.create({
         recipientId: selectedStudent.tutorId,
         recipientType: 'tutor',
         type: 'validation',
         title: 'Inscription validée !',
-        message: `L'inscription de ${selectedStudent.firstName} ${selectedStudent.lastName} a été validée. Veuillez procéder au paiement de ${amount} DH à l'école pour finaliser l'inscription.`,
+        message: `L'inscription de ${selectedStudent.firstName} ${selectedStudent.lastName} a été validée.${discountMessage}`,
         senderId: 'admin',
         senderType: 'admin'
       });
@@ -106,6 +147,19 @@ export default function AdminRegistrations() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const verifyBusCapacity = async (student) => {
+    // Find routes that cover this zone
+    const relevantRoutes = routes.filter(r => r.zones?.includes(student.zone));
+    const relevantBuses = buses.filter(b => b.capacityInfo?.route && relevantRoutes.some(r => r.id === b.capacityInfo.route.id));
+    
+    setVerifyInfo({
+      student,
+      relevantBuses,
+      relevantRoutes
+    });
+    setShowVerifyDialog(true);
   };
 
   const rejectStudent = async (student) => {
@@ -188,8 +242,7 @@ export default function AdminRegistrations() {
               label: 'Genre',
               render: (v) => v === 'male' ? 'Garçon' : 'Fille'
             },
-            { key: 'quarter', label: 'Quartier' },
-            { key: 'address', label: 'Adresse' },
+            { key: 'zone', label: 'Zone' },
             {
               key: 'transportType',
               label: 'Type',
@@ -217,6 +270,15 @@ export default function AdminRegistrations() {
             <>
               <Button
                 size="sm"
+                variant="outline"
+                onClick={() => verifyBusCapacity(student)}
+                className="border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
+                <Eye className="w-4 h-4 mr-1" />
+                Vérifier
+              </Button>
+              <Button
+                size="sm"
                 onClick={() => {
                   setSelectedStudent(student);
                   setShowApproveDialog(true);
@@ -239,6 +301,95 @@ export default function AdminRegistrations() {
         />
       </div>
 
+      {/* Verify Dialog */}
+      <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Vérification de disponibilité</DialogTitle>
+          </DialogHeader>
+          
+          {verifyInfo && (
+            <div className="space-y-4">
+              <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                <h4 className="font-semibold text-lg">{verifyInfo.student.firstName} {verifyInfo.student.lastName}</h4>
+                <p className="text-sm text-gray-600">Zone: <span className="font-medium">{verifyInfo.student.zone}</span></p>
+                <p className="text-sm text-gray-600">Classe: {verifyInfo.student.class}</p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Bus className="w-5 h-5 text-amber-600" />
+                  Bus disponibles pour cette zone
+                </h4>
+                
+                {verifyInfo.relevantBuses.length > 0 ? (
+                  verifyInfo.relevantBuses.map(bus => {
+                    const route = bus.capacityInfo?.route;
+                    const capacityPercentage = (bus.capacityInfo.used / bus.capacityInfo.total) * 100;
+                    
+                    return (
+                      <div key={bus.id} className="p-4 border-2 border-gray-200 rounded-xl hover:border-amber-300 transition-colors">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h5 className="font-semibold text-lg">{bus.busId}</h5>
+                            <p className="text-sm text-gray-500">Trajet: {route?.routeId || '-'}</p>
+                            <p className="text-xs text-gray-500">Destination: {route?.terminus || '-'}</p>
+                          </div>
+                          <Badge className={bus.capacityInfo.available > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                            {bus.capacityInfo.available > 0 ? 'Places disponibles' : 'Complet'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Capacité utilisée:</span>
+                            <span className="font-semibold">{bus.capacityInfo.used} / {bus.capacityInfo.total}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div 
+                              className={`h-2.5 rounded-full ${
+                                capacityPercentage >= 90 ? 'bg-red-500' : 
+                                capacityPercentage >= 70 ? 'bg-yellow-500' : 
+                                'bg-green-500'
+                              }`}
+                              style={{ width: `${capacityPercentage}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {bus.capacityInfo.available} places restantes
+                          </p>
+                        </div>
+
+                        {route && (
+                          <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
+                            <p>🕐 Matin: {route.departureTimeMorning} - {route.arrivalTimeMorning}</p>
+                            <p>🕐 Soir: {route.departureTimeEvening} - {route.arrivalTimeEvening}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-8 text-center border-2 border-dashed border-gray-300 rounded-xl">
+                    <Bus className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p className="text-gray-500">Aucun bus n'est assigné à cette zone</p>
+                    <p className="text-sm text-gray-400 mt-1">Veuillez configurer les trajets dans la section Trajets</p>
+                  </div>
+                )}
+              </div>
+
+              <Button 
+                onClick={() => setShowVerifyDialog(false)}
+                className="w-full"
+                variant="outline"
+              >
+                Fermer
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Approve Dialog */}
       <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
         <DialogContent>
@@ -251,8 +402,7 @@ export default function AdminRegistrations() {
               <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
                 <h4 className="font-semibold">{selectedStudent.firstName} {selectedStudent.lastName}</h4>
                 <p className="text-sm text-gray-600">Classe: {selectedStudent.class}</p>
-                <p className="text-sm text-gray-600">Quartier: {selectedStudent.quarter}</p>
-                <p className="text-sm text-gray-600">Adresse: {selectedStudent.address}</p>
+                <p className="text-sm text-gray-600">Zone: {selectedStudent.zone}</p>
                 <p className="text-sm font-semibold text-amber-700 mt-2">
                   Montant: {selectedStudent.subscriptionType === 'annuel' ? '3000 DH' : '300 DH'}
                 </p>

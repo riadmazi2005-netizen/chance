@@ -5,13 +5,18 @@ import { mockApi } from '@/services/mockData';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   ShieldCheck, Users, Bus, MapPin, CreditCard, AlertTriangle,
-  Bell, FileText, UserCog, Loader2, Phone, BarChart3
+  Bell, FileText, UserCog, Loader2, Phone, BarChart3, Edit, Trash2
 } from 'lucide-react';
 
 const CLASSES = ['1AP', '2AP', '3AP', '4AP', '5AP', '6AP', '1AC', '2AC', '3AC', 'TC', '1BAC', '2BAC'];
-const QUARTERS = ['Hay Riad', 'Agdal', 'Hassan', 'Océan', 'Yacoub El Mansour', 'Akkari', 'Souissi'];
+const ZONES = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5', 'Zone 6'];
 
 export default function AdminStudents() {
   const navigate = useNavigate();
@@ -19,6 +24,9 @@ export default function AdminStudents() {
   const [students, setStudents] = useState([]);
   const [buses, setBuses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [editForm, setEditForm] = useState({});
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -56,6 +64,50 @@ export default function AdminStudents() {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEdit = (student) => {
+    setSelectedStudent(student);
+    setEditForm({
+      busId: student.busId || '',
+      busGroup: student.busGroup || '',
+      class: student.class,
+      zone: student.zone
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      await mockApi.entities.Student.update(selectedStudent.id, editForm);
+      setShowEditDialog(false);
+      loadData();
+    } catch (error) {
+      console.error('Error updating student:', error);
+    }
+  };
+
+  const handleDelete = async (student) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer ${student.firstName} ${student.lastName} ?`)) return;
+    
+    try {
+      await mockApi.entities.Student.delete(student.id);
+      
+      // Notify tutor
+      await mockApi.entities.Notification.create({
+        recipientId: student.tutorId,
+        recipientType: 'tutor',
+        type: 'general',
+        title: 'Élève retiré',
+        message: `${student.firstName} ${student.lastName} a été retiré(e) du système.`,
+        senderId: 'admin',
+        senderType: 'admin'
+      });
+      
+      loadData();
+    } catch (error) {
+      console.error('Error deleting student:', error);
     }
   };
 
@@ -121,7 +173,7 @@ export default function AdminStudents() {
               label: 'Genre',
               render: (v) => v === 'male' ? 'Garçon' : 'Fille'
             },
-            { key: 'quarter', label: 'Quartier' },
+            { key: 'zone', label: 'Zone' },
             {
               key: 'busGroup',
               label: 'Groupe',
@@ -166,7 +218,7 @@ export default function AdminStudents() {
             }
           ]}
           data={students}
-          searchPlaceholder="Rechercher par nom, classe, quartier..."
+          searchPlaceholder="Rechercher par nom, classe, zone..."
           filters={[
             {
               key: 'busGroup',
@@ -190,14 +242,111 @@ export default function AdminStudents() {
               options: CLASSES.map(c => ({ value: c, label: c }))
             },
             {
-              key: 'quarter',
-              label: 'Quartier',
-              options: QUARTERS.map(q => ({ value: q, label: q }))
+              key: 'zone',
+              label: 'Zone',
+              options: ZONES.map(z => ({ value: z, label: z }))
             }
           ]}
+          actions={(student) => (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleEdit(student)}
+                className="border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDelete(student)}
+                className="border-red-300 text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </>
+          )}
           emptyMessage="Aucun élève inscrit"
         />
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier l'élève</DialogTitle>
+          </DialogHeader>
+          
+          {selectedStudent && (
+            <div className="space-y-4">
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <p className="font-semibold">{selectedStudent.firstName} {selectedStudent.lastName}</p>
+                <p className="text-sm text-gray-600">{selectedStudent.class}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Classe</Label>
+                <Select value={editForm.class} onValueChange={(v) => setEditForm({...editForm, class: v})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CLASSES.map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Zone</Label>
+                <Select value={editForm.zone} onValueChange={(v) => setEditForm({...editForm, zone: v})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ZONES.map(z => (
+                      <SelectItem key={z} value={z}>{z}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Bus</Label>
+                <Select value={editForm.busId} onValueChange={(v) => setEditForm({...editForm, busId: v})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un bus" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {buses.map(bus => (
+                      <SelectItem key={bus.id} value={bus.id}>{bus.busId}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Groupe</Label>
+                <Select value={editForm.busGroup} onValueChange={(v) => setEditForm({...editForm, busGroup: v})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un groupe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A">Groupe A</SelectItem>
+                    <SelectItem value="B">Groupe B</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button onClick={handleSaveEdit} className="w-full">
+                Enregistrer
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

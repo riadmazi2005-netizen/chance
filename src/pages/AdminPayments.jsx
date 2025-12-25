@@ -81,11 +81,14 @@ export default function AdminPayments() {
     try {
       const bus = buses.find(b => b.id === selectedBus);
       
+      // Find route for this bus
+      const routes = await mockApi.entities.Route.list();
+      const route = routes.find(r => r.busId === selectedBus);
+
       // Update student with bus assignment
       await mockApi.entities.Student.update(selectedPayment.studentId, {
         busId: selectedBus,
         busGroup: selectedGroup,
-        routeId: bus?.routeId,
         paymentStatus: 'paid'
       });
 
@@ -193,7 +196,21 @@ export default function AdminPayments() {
             },
             {
               key: 'amount',
-              label: 'Montant',
+              label: 'Montant base',
+              render: (v) => <span className="text-gray-600">{v} DH</span>
+            },
+            {
+              key: 'discountPercentage',
+              label: 'Réduction',
+              render: (v, p) => v > 0 ? (
+                <Badge className="bg-green-100 text-green-800">-{v}% ({p.discountAmount} DH)</Badge>
+              ) : (
+                <span className="text-gray-400">-</span>
+              )
+            },
+            {
+              key: 'finalAmount',
+              label: 'Montant final',
               render: (v) => <span className="font-semibold text-amber-600">{v} DH</span>
             },
             {

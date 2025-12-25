@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Users, ArrowLeft, Eye, EyeOff, Loader2, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { mockApi } from '@/services/mockData';
+import { tutorApi } from '@/services/apiService';
 
 export default function TutorRegister() {
   const navigate = useNavigate();
@@ -44,7 +44,7 @@ export default function TutorRegister() {
 
     try {
       // Check if email or phone already exists
-      const existingTutors = await mockApi.entities.Tutor.list();
+      const existingTutors = await tutorApi.entities.Tutor.list();
       const exists = existingTutors.find(t => t.email === formData.email || t.phone === formData.phone);
       
       if (exists) {
@@ -53,7 +53,7 @@ export default function TutorRegister() {
 
       // Create tutor
       const { confirmPassword, ...tutorData } = formData;
-      await mockApi.entities.Tutor.create(tutorData);
+      await tutorApi.entities.Tutor.create(tutorData);
       
       setSuccess(true);
       setTimeout(() => {

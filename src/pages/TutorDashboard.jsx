@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockData } from '@/services/mockDataService';
+import { tutorApi } from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatCard from '@/components/ui/StatCard';
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CLASSES = ['1AP', '2AP', '3AP', '4AP', '5AP', '6AP', '1AC', '2AC', '3AC', 'TC', '1BAC', '2BAC'];
-const QUARTERS = ['Hay Riad', 'Agdal', 'Hassan', 'Océan', 'Yacoub El Mansour', 'Akkari', 'Souissi'];
+const ZONES = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5', 'Zone 6'];
 
 export default function TutorDashboard() {
   const navigate = useNavigate();
@@ -44,8 +44,7 @@ export default function TutorDashboard() {
     class: '',
     age: '',
     gender: 'male',
-    address: '',
-    quarter: '',
+    zone: '',
     transportType: 'aller-retour',
     subscriptionType: 'mensuel',
     parentRelation: ''
@@ -63,12 +62,20 @@ export default function TutorDashboard() {
 
   const loadData = async (tutorId) => {
     try {
-      const [studentsData, notificationsData, busesData] = await Promise.all([
-        mockApi.entities.Student.filter({ tutorId }),
-        mockApi.entities.Notification.filter({ recipientId: tutorId, recipientType: 'tutor' }),
-        mockApi.entities.Bus.list()
+      const [studentsData, notificationsData, busesData, paymentsData] = await Promise.all([
+        tutorApi.entities.Student.filter({ tutorId }),
+        tutorApi.entities.Notification.filter({ recipientId: tutorId, recipientType: 'tutor' }),
+        tutorApi.entities.Bus.list(),
+        tutorApi.entities.Payment.list()
       ]);
-      setStudents(studentsData);
+      
+      // Attach payment info to students
+      const studentsWithPayments = studentsData.map(s => {
+        const payment = paymentsData.find(p => p.studentId === s.id);
+        return { ...s, payment };
+      });
+      
+      setStudents(studentsWithPayments);
       setNotifications(notificationsData);
       setBuses(busesData);
     } catch (error) {
@@ -83,7 +90,7 @@ export default function TutorDashboard() {
     setSubmitting(true);
     
     try {
-      await mockApi.entities.Student.create({
+      await tutorApi.entities.Student.create({
         ...newStudent,
         age: parseInt(newStudent.age),
         tutorId: currentUser.id,
@@ -93,7 +100,7 @@ export default function TutorDashboard() {
       });
 
       // Create notification for admin
-      await mockApi.entities.Notification.create({
+      await tutorApi.entities.Notification.create({
         recipientId: 'admin',
         recipientType: 'admin',
         type: 'general',
@@ -110,8 +117,7 @@ export default function TutorDashboard() {
         class: '',
         age: '',
         gender: 'male',
-        address: '',
-        quarter: '',
+        zone: '',
         transportType: 'aller-retour',
         subscriptionType: 'mensuel',
         parentRelation: ''
@@ -132,29 +138,49 @@ export default function TutorDashboard() {
 
     setSubmitting(true);
     try {
-      await mockApi.entities.Student.update(selectedPayment.id, {
-        paymentStatus: 'paid'
-      });
+      // Calculate family discount
+      const allStudents = await tutorApi.entities.Student.list();
+      const tutorStudents = allStudents.filter(s => 
+        s.tutorId === currentUser.id && 
+        (s.status === 'approved' || s.id === selectedPayment.id)
+      );
+      
+      const studentCount = tutorStudents.length;
+      let discountPercentage = 0;
+      if (studentCount === 2) discountPercentage = 10;
+      else if (studentCount >= 3) discountPercentage = 30;
 
-      // Create payment record
-      await mockApi.entities.Payment.create({
+      // Create payment record with discount
+      const baseAmount = selectedPayment.subscriptionType === 'annuel' ? 3000 : 300;
+      const discountAmount = (baseAmount * discountPercentage) / 100;
+      const finalAmount = baseAmount - discountAmount;
+
+      await tutorApi.entities.Payment.create({
         studentId: selectedPayment.id,
         tutorId: currentUser.id,
-        amount: selectedPayment.subscriptionType === 'annuel' ? 3000 : 300,
+        amount: baseAmount,
+        discountPercentage,
+        discountAmount,
+        finalAmount,
         transportType: selectedPayment.transportType,
         subscriptionType: selectedPayment.subscriptionType,
-        status: 'paid',
+        status: 'pending',
         verificationCode,
         paymentDate: new Date().toISOString().split('T')[0]
       });
 
-      // Notify admin
-      await mockApi.entities.Notification.create({
+      // Update student payment status to paid
+      await tutorApi.entities.Student.update(selectedPayment.id, {
+        paymentStatus: 'paid'
+      });
+
+      // Notify admin about payment
+      await tutorApi.entities.Notification.create({
         recipientId: 'admin',
         recipientType: 'admin',
         type: 'payment',
-        title: 'Paiement validé',
-        message: `Paiement reçu pour ${selectedPayment.firstName} ${selectedPayment.lastName}`,
+        title: `Paiement effectué - ${currentUser.firstName} ${currentUser.lastName}`,
+        message: `Le tuteur ${currentUser.firstName} ${currentUser.lastName} a payé l'inscription de ${selectedPayment.firstName} ${selectedPayment.lastName} (${finalAmount} DH). Veuillez affecter l'élève à un bus.`,
         senderId: currentUser.id,
         senderType: 'tutor'
       });
@@ -162,6 +188,7 @@ export default function TutorDashboard() {
       setShowPayment(false);
       setSelectedPayment(null);
       setVerificationCode('');
+      alert('Paiement confirmé ! L\'administrateur va affecter votre enfant à un bus sous peu.');
       loadData(currentUser.id);
     } catch (error) {
       console.error('Error processing payment:', error);
@@ -204,6 +231,10 @@ export default function TutorDashboard() {
   const approvedStudents = students.filter(s => s.status === 'approved');
   const pendingStudents = students.filter(s => s.status === 'pending');
   const paidStudents = students.filter(s => s.paymentStatus === 'paid');
+  
+  // Calculate discount info
+  const discountPercentage = approvedStudents.length === 2 ? 10 : approvedStudents.length >= 3 ? 30 : 0;
+  const totalPayments = students.reduce((sum, s) => sum + (s.payment?.finalAmount || 0), 0);
 
   return (
     <DashboardLayout
@@ -257,6 +288,35 @@ export default function TutorDashboard() {
             color="purple"
           />
         </div>
+
+        {/* Family Discount Banner */}
+        {discountPercentage > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200 shadow-lg"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center">
+                  <span className="text-2xl">🎉</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-green-900">Réduction familiale appliquée !</h3>
+                  <p className="text-sm text-green-700">
+                    {approvedStudents.length} élèves inscrits • <span className="font-semibold">-{discountPercentage}%</span> sur chaque paiement
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-green-600">Économie totale</p>
+                <p className="text-2xl font-bold text-green-700">
+                  {students.reduce((sum, s) => sum + (s.payment?.discountAmount || 0), 0).toFixed(0)} DH
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Students List */}
         <Card className="border-amber-100 shadow-lg">
@@ -329,24 +389,40 @@ export default function TutorDashboard() {
                       </div>
 
                       {/* Invoice Preview for approved students */}
-                      {student.status === 'approved' && (
+                      {student.status === 'approved' && student.payment && (
                         <div className="mt-4 p-4 bg-amber-50/50 rounded-xl border border-amber-100">
                           <h4 className="font-semibold text-gray-700 mb-2">Facture</h4>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
                               <span className="text-gray-500">Type:</span>
-                              <span className="ml-2 font-medium">{student.transportType}</span>
+                              <span className="font-medium">{student.transportType}</span>
                             </div>
-                            <div>
+                            <div className="flex justify-between">
                               <span className="text-gray-500">Abonnement:</span>
-                              <span className="ml-2 font-medium">{student.subscriptionType}</span>
+                              <span className="font-medium">{student.subscriptionType}</span>
                             </div>
-                            <div>
-                              <span className="text-gray-500">Montant:</span>
-                              <span className="ml-2 font-bold text-amber-600">
-                                {student.subscriptionType === 'annuel' ? '3000' : '300'} DH
-                              </span>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Montant base:</span>
+                              <span className="font-medium">{student.payment.amount} DH</span>
                             </div>
+                            {student.payment.discountPercentage > 0 && (
+                              <>
+                                <div className="flex justify-between text-green-600">
+                                  <span>Réduction familiale ({student.payment.discountPercentage}%):</span>
+                                  <span className="font-semibold">-{student.payment.discountAmount} DH</span>
+                                </div>
+                                <div className="pt-2 border-t border-amber-200 flex justify-between">
+                                  <span className="font-semibold text-gray-700">Montant final:</span>
+                                  <span className="font-bold text-amber-600">{student.payment.finalAmount} DH</span>
+                                </div>
+                              </>
+                            )}
+                            {student.payment.discountPercentage === 0 && (
+                              <div className="pt-2 border-t border-amber-200 flex justify-between">
+                                <span className="font-semibold text-gray-700">Montant:</span>
+                                <span className="font-bold text-amber-600">{student.payment.finalAmount} DH</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -370,37 +446,7 @@ export default function TutorDashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Notifications */}
-        <Card className="border-amber-100 shadow-lg">
-          <CardHeader className="border-b border-amber-100 bg-gradient-to-r from-amber-50 to-yellow-50">
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="w-5 h-5 text-amber-600" />
-              Notifications Récentes
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {notifications.length > 0 ? (
-              <div className="divide-y divide-amber-50">
-                {notifications.slice(0, 5).map((notif, idx) => (
-                  <div key={notif.id} className={`p-4 ${!notif.read ? 'bg-amber-50/30' : ''}`}>
-                    <div className="flex items-start gap-3">
-                      <div className={`w-2 h-2 rounded-full mt-2 ${!notif.read ? 'bg-amber-500' : 'bg-gray-300'}`} />
-                      <div>
-                        <p className="font-medium text-gray-900">{notif.title}</p>
-                        <p className="text-sm text-gray-500">{notif.message}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-8 text-center text-gray-500">
-                <Bell className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Aucune notification</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
       </div>
 
       {/* Add Student Dialog */}
@@ -486,26 +532,17 @@ export default function TutorDashboard() {
             </div>
 
             <div className="space-y-2">
-              <Label>Adresse</Label>
-              <Input
-                value={newStudent.address}
-                onChange={(e) => setNewStudent({...newStudent, address: e.target.value})}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Quartier</Label>
+              <Label>Zone</Label>
               <Select
-                value={newStudent.quarter}
-                onValueChange={(value) => setNewStudent({...newStudent, quarter: value})}
+                value={newStudent.zone}
+                onValueChange={(value) => setNewStudent({...newStudent, zone: value})}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner le quartier" />
+                  <SelectValue placeholder="Sélectionner la zone" />
                 </SelectTrigger>
                 <SelectContent>
-                  {QUARTERS.map(q => (
-                    <SelectItem key={q} value={q}>{q}</SelectItem>
+                  {ZONES.map(z => (
+                    <SelectItem key={z} value={z}>{z}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

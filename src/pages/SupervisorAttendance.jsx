@@ -109,16 +109,6 @@ export default function SupervisorAttendance() {
 
       // Update local state
       setTodayAttendance(prev => ({ ...prev, [studentId]: status }));
-      
-      // Mark as processed - will disappear after 2 seconds
-      setMarkedStudents(prev => ({ ...prev, [studentId]: status }));
-      setTimeout(() => {
-        setMarkedStudents(prev => {
-          const newMarked = { ...prev };
-          delete newMarked[studentId];
-          return newMarked;
-        });
-      }, 2000);
 
       // If absent, notify tutor and update absence count
       if (status === 'absent') {
@@ -172,77 +162,10 @@ export default function SupervisorAttendance() {
     );
   }
 
-  const filteredStudents = students.filter(s => s.busGroup === selectedGroup && !markedStudents[s.id]);
-
-  const renderStudentCard = (student) => {
-    const attendanceStatus = markedStudents[student.id] || todayAttendance[student.id];
-    
-    return (
-      <motion.div
-        key={student.id}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`p-4 rounded-xl border-2 transition-all ${
-          attendanceStatus === 'present' 
-            ? 'border-green-300 bg-green-50' 
-            : attendanceStatus === 'absent'
-            ? 'border-red-300 bg-red-50'
-            : 'border-amber-200 bg-white'
-        }`}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-white font-bold">
-              {student.firstName?.[0]}{student.lastName?.[0]}
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900">{student.firstName} {student.lastName}</p>
-              <p className="text-sm text-gray-500">{student.class} • {student.gender === 'male' ? 'Garçon' : 'Fille'}</p>
-            </div>
-          </div>
-          
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => markAttendance(student.id, 'present')}
-              disabled={submitting}
-              className={`${
-                attendanceStatus === 'present'
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-green-500 hover:bg-green-600'
-              }`}
-            >
-              <CheckCircle className="w-4 h-4" />
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => markAttendance(student.id, 'absent')}
-              disabled={submitting}
-              className={`${
-                attendanceStatus === 'absent'
-                  ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-red-500 hover:bg-red-600'
-              }`}
-            >
-              <XCircle className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-        
-        {attendanceStatus && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-2 pt-2 border-t border-gray-200"
-          >
-            <Badge className={attendanceStatus === 'present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-              {attendanceStatus === 'present' ? '✅ Présent(e)' : '❌ Absent(e)'}
-            </Badge>
-          </motion.div>
-        )}
-      </motion.div>
-    );
-  };
+  const filteredStudents = students.filter(s => 
+    s.busGroup === selectedGroup && 
+    !todayAttendance[s.id]
+  );
 
   return (
     <DashboardLayout
@@ -347,8 +270,66 @@ export default function SupervisorAttendance() {
           </CardHeader>
           <CardContent className="p-6">
             {filteredStudents.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredStudents.map(renderStudentCard)}
+              <div className="space-y-3">
+                {filteredStudents.map(student => {
+                  const attendanceStatus = todayAttendance[student.id];
+                  
+                  return (
+                    <motion.div
+                      key={student.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className={`p-4 rounded-xl border-2 transition-all ${
+                        attendanceStatus === 'present' 
+                          ? 'border-green-300 bg-green-50' 
+                          : attendanceStatus === 'absent'
+                          ? 'border-red-300 bg-red-50'
+                          : 'border-amber-200 bg-white hover:bg-amber-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-white font-bold text-sm">
+                            {student.firstName?.[0]}{student.lastName?.[0]}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">{student.firstName} {student.lastName}</p>
+                            <p className="text-xs text-gray-500">{student.class}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => markAttendance(student.id, 'present')}
+                            disabled={submitting}
+                            className={`${
+                              attendanceStatus === 'present'
+                                ? 'bg-green-600 hover:bg-green-700'
+                                : 'bg-green-500 hover:bg-green-600'
+                            }`}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Présent
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => markAttendance(student.id, 'absent')}
+                            disabled={submitting}
+                            className={`${
+                              attendanceStatus === 'absent'
+                                ? 'bg-red-600 hover:bg-red-700'
+                                : 'bg-red-500 hover:bg-red-600'
+                            }`}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Absent
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-center text-gray-500 py-8">Aucun élève dans ce groupe</p>

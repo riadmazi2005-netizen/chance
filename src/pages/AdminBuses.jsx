@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { tutorApi } from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Button } from "@/components/ui/button";
@@ -55,10 +55,10 @@ export default function AdminBuses() {
   const loadData = async () => {
     try {
       const [busesData, driversData, supervisorsData, routesData] = await Promise.all([
-        mockApi.entities.Bus.list(),
-        mockApi.entities.Driver.list(),
-        mockApi.entities.Supervisor.list(),
-        mockApi.entities.Route.list()
+        tutorApi.entities.Bus.list(),
+        tutorApi.entities.Driver.list(),
+        tutorApi.entities.Supervisor.list(),
+        tutorApi.entities.Route.list()
       ]);
       
       const busesWithDetails = busesData.map(b => {
@@ -93,9 +93,9 @@ export default function AdminBuses() {
       };
 
       if (editingBus) {
-        await mockApi.entities.Bus.update(editingBus.id, data);
+        await tutorApi.entities.Bus.update(editingBus.id, data);
       } else {
-        await mockApi.entities.Bus.create(data);
+        await tutorApi.entities.Bus.create(data);
       }
 
       setShowDialog(false);
@@ -111,7 +111,7 @@ export default function AdminBuses() {
   const deleteBus = async (bus) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce bus ?')) return;
     try {
-      await mockApi.entities.Bus.delete(bus.id);
+      await tutorApi.entities.Bus.delete(bus.id);
       loadData();
     } catch (error) {
       console.error('Error deleting bus:', error);

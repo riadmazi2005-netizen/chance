@@ -137,7 +137,7 @@ export default function Home() {
       <footer className="bg-gradient-to-r from-amber-500 to-yellow-500 py-8 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-white font-medium">
-            © 2024 Mohammed 5 School Bus - École Mohammed V
+            © 2025 Mohammed 5 School Bus 
           </p>
           <p className="text-amber-100 text-sm mt-2">
             Système de gestion du transport scolaire
