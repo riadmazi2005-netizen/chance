@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { supervisorApi } from  '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatCard from '@/components/ui/StatCard';
 import DataTable from '@/components/ui/DataTable';
@@ -55,22 +55,22 @@ export default function SupervisorDashboard() {
   const loadData = async (user) => {
     try {
       // Get supervisor's bus
-      const buses = await mockApi.entities.Bus.filter({ supervisorId: user.id });
+      const buses = await supervisorApi.entities.Bus.filter({ supervisorId: user.id });
       const myBus = buses[0];
       setBus(myBus);
 
       if (myBus) {
         // Get driver
         if (myBus.driverId) {
-          const drivers = await mockApi.entities.Driver.list();
+          const drivers = await supervisorApi.entities.Driver.list();
           setDriver(drivers.find(d => d.id === myBus.driverId));
         }
 
         // Get students for this bus
-        const allStudents = await mockApi.entities.Student.filter({ busId: myBus.id, status: 'approved' });
+        const allStudents = await supervisorApi.entities.Student.filter({ busId: myBus.id, status: 'approved' });
         
         // Get tutors for phone numbers
-        const tutors = await mockApi.entities.Tutor.list();
+        const tutors = await supervisorApi.entities.Tutor.list();
         const studentsWithTutors = allStudents.map(s => {
           const tutor = tutors.find(t => t.id === s.tutorId);
           return { ...s, tutorPhone: tutor?.phone, tutorName: `${tutor?.firstName} ${tutor?.lastName}` };
@@ -79,13 +79,13 @@ export default function SupervisorDashboard() {
 
         // Get accidents for this bus's driver
         if (myBus.driverId) {
-          const allAccidents = await mockApi.entities.Accident.filter({ driverId: myBus.driverId });
+          const allAccidents = await supervisorApi.entities.Accident.filter({ driverId: myBus.driverId });
           setAccidents(allAccidents);
         }
       }
 
       // Get notifications
-      const notifs = await mockApi.entities.Notification.filter({ 
+      const notifs = await supervisorApi.entities.Notification.filter({ 
         recipientId: user.id, 
         recipientType: 'supervisor' 
       });
@@ -111,7 +111,7 @@ export default function SupervisorDashboard() {
         complaint: 'Notification du responsable bus'
       };
 
-      await mockApi.entities.Notification.create({
+      await supervisorApi.entities.Notification.create({
         recipientId: student.tutorId,
         recipientType: 'tutor',
         type: notifyType,
@@ -123,7 +123,7 @@ export default function SupervisorDashboard() {
 
       // Update absence count if it's an absence
       if (notifyType === 'absence') {
-        await mockApi.entities.Student.update(student.id, {
+        await supervisorApi.entities.Student.update(student.id, {
           absenceCount: (student.absenceCount || 0) + 1
         });
         loadData(currentUser);
@@ -142,7 +142,7 @@ export default function SupervisorDashboard() {
   const requestRaise = async () => {
     setSubmitting(true);
     try {
-      await mockApi.entities.RaiseRequest.create({
+      await supervisorApi.entities.RaiseRequest.create({
         requesterId: currentUser.id,
         requesterType: 'supervisor',
         currentSalary: currentUser.salary || 0,
@@ -151,7 +151,7 @@ export default function SupervisorDashboard() {
       });
 
       // Notify admin
-      await mockApi.entities.Notification.create({
+      await supervisorApi.entities.Notification.create({
         recipientId: 'admin',
         recipientType: 'admin',
         type: 'raise_request',

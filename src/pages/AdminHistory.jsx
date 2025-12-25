@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { adminApi } from  '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,11 +30,11 @@ export default function AdminHistory() {
   const loadData = async () => {
     try {
       const [students, accidents, payments, attendance, unsubscriptions] = await Promise.all([
-        mockApi.entities.Student.list(),
-        mockApi.entities.Accident.list(),
-        mockApi.entities.Payment.list(),
-        mockApi.entities.Attendance.list(),
-        mockApi.entities.Unsubscription.list()
+        adminApi.entities.Student.list(),
+        adminApi.entities.Accident.list(),
+        adminApi.entities.Payment.list(),
+        adminApi.entities.Attendance.list(),
+        adminApi.entities.Unsubscription.list()
       ]);
 
       const allEvents = [];

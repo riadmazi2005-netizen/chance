@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { driverApi } from  '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Badge } from "@/components/ui/badge";
@@ -29,13 +29,13 @@ export default function DriverStudents() {
 
   const loadData = async (user) => {
     try {
-      const buses = await mockApi.entities.Bus.filter({ driverId: user.id });
+      const buses = await driverApi.entities.Bus.filter({ driverId: user.id });
       const myBus = buses[0];
       setBus(myBus);
 
       if (myBus) {
-        const allStudents = await mockApi.entities.Student.filter({ busId: myBus.id, status: 'approved' });
-        const tutors = await mockApi.entities.Tutor.list();
+        const allStudents = await driverApi.entities.Student.filter({ busId: myBus.id, status: 'approved' });
+        const tutors = await driverApi.entities.Tutor.list();
         const studentsWithTutors = allStudents.map(s => {
           const tutor = tutors.find(t => t.id === s.tutorId);
           return { ...s, tutorPhone: tutor?.phone };

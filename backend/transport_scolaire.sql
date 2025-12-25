@@ -1,6 +1,6 @@
 -- ============================================
--- BASE DE DONNÉES TRANSPORT SCOLAIRE
--- École Mohammed V - Version Production Mise à Jour
+-- BASE DE DONNÉES TRANSPORT SCOLAIRE - VERSION CORRIGÉE
+-- École Mohammed V - Production
 -- ============================================
 
 DROP DATABASE IF EXISTS transport_scolaire;
@@ -13,12 +13,12 @@ USE transport_scolaire;
 CREATE TABLE users (
     id VARCHAR(36) PRIMARY KEY,
     user_type ENUM('admin', 'tutor', 'driver', 'supervisor') NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE,
     phone VARCHAR(20) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    cin VARCHAR(20),
+    cin VARCHAR(20) UNIQUE,
     status ENUM('active', 'inactive', 'suspended', 'fired') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -26,6 +26,7 @@ CREATE TABLE users (
     INDEX idx_user_type (user_type),
     INDEX idx_email (email),
     INDEX idx_phone (phone),
+    INDEX idx_cin (cin),
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -53,7 +54,8 @@ CREATE TABLE tutors (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
@@ -71,6 +73,7 @@ CREATE TABLE drivers (
     
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_license (license_number),
+    INDEX idx_user_id (user_id),
     
     CONSTRAINT chk_age CHECK (age >= 21 AND age <= 70),
     CONSTRAINT chk_salary CHECK (salary >= 0),
@@ -88,6 +91,7 @@ CREATE TABLE supervisors (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
     CONSTRAINT chk_supervisor_salary CHECK (salary >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -132,12 +136,13 @@ CREATE TABLE buses (
     INDEX idx_status (status),
     INDEX idx_driver (driver_id),
     INDEX idx_supervisor (supervisor_id),
+    INDEX idx_route (route_id),
     
     CONSTRAINT chk_capacity CHECK (capacity > 0 AND capacity <= 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
--- TABLE STUDENTS (Élèves) - MISE À JOUR
+-- TABLE STUDENTS (Élèves) - CORRIGÉE
 -- ============================================
 CREATE TABLE students (
     id VARCHAR(36) PRIMARY KEY,
@@ -147,7 +152,7 @@ CREATE TABLE students (
     class VARCHAR(20) NOT NULL,
     age INT NOT NULL,
     gender ENUM('male', 'female') NOT NULL,
-    zone VARCHAR(100) NOT NULL,
+    zone VARCHAR(100) NOT NULL, -- Nom de colonne cohérent
     parent_relation VARCHAR(50) NOT NULL,
     transport_type ENUM('aller', 'retour', 'aller-retour') NOT NULL,
     subscription_type ENUM('mensuel', 'annuel') NOT NULL,
@@ -170,13 +175,14 @@ CREATE TABLE students (
     INDEX idx_payment (payment_status),
     INDEX idx_class (class),
     INDEX idx_zone (zone),
+    INDEX idx_created (created_at),
     
     CONSTRAINT chk_age_student CHECK (age >= 4 AND age <= 25),
     CONSTRAINT chk_absence CHECK (absence_count >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
--- TABLE PAYMENTS (Paiements) - MISE À JOUR
+-- TABLE PAYMENTS (Paiements)
 -- ============================================
 CREATE TABLE payments (
     id VARCHAR(36) PRIMARY KEY,
@@ -201,6 +207,7 @@ CREATE TABLE payments (
     INDEX idx_tutor (tutor_id),
     INDEX idx_status (status),
     INDEX idx_payment_date (payment_date),
+    INDEX idx_created (created_at),
     
     CONSTRAINT chk_amount CHECK (amount > 0),
     CONSTRAINT chk_discount_percentage CHECK (discount_percentage >= 0 AND discount_percentage <= 100),
@@ -230,6 +237,7 @@ CREATE TABLE attendance (
     INDEX idx_date (date),
     INDEX idx_period (period),
     INDEX idx_status (status),
+    INDEX idx_date_period (date, period),
     
     UNIQUE KEY unique_attendance (student_id, bus_id, date, period)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -256,6 +264,33 @@ CREATE TABLE accidents (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
+-- TABLE BUS_EXPENSES (Dépenses Bus) - CORRIGÉE
+-- ============================================
+CREATE TABLE bus_expenses (
+    id VARCHAR(36) PRIMARY KEY,
+    bus_id VARCHAR(36) NOT NULL,
+    driver_id VARCHAR(36) NOT NULL,
+    date DATE NOT NULL,
+    type ENUM('fuel', 'repair', 'tire_inflation', 'maintenance', 'other') NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    description TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (bus_id) REFERENCES buses(id) ON DELETE CASCADE,
+    FOREIGN KEY (driver_id) REFERENCES drivers(id) ON DELETE CASCADE,
+    
+    INDEX idx_bus (bus_id),
+    INDEX idx_driver (driver_id),
+    INDEX idx_date (date),
+    INDEX idx_type (type),
+    INDEX idx_bus_date (bus_id, date DESC),
+    INDEX idx_driver_date (driver_id, date DESC),
+    
+    CONSTRAINT chk_expense_amount CHECK (amount > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
 -- TABLE NOTIFICATIONS
 -- ============================================
 CREATE TABLE notifications (
@@ -273,7 +308,8 @@ CREATE TABLE notifications (
     INDEX idx_recipient (recipient_id, recipient_type),
     INDEX idx_sender (sender_id),
     INDEX idx_read (is_read),
-    INDEX idx_created (created_at)
+    INDEX idx_created (created_at),
+    INDEX idx_recipient_read (recipient_id, recipient_type, is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
@@ -296,37 +332,31 @@ CREATE TABLE raise_requests (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
--- TRIGGERS
+-- TABLE UNSUBSCRIPTIONS (Désinscriptions) - NOUVELLE
 -- ============================================
-
-CREATE TABLE IF NOT EXISTS bus_expenses (
+CREATE TABLE unsubscriptions (
     id VARCHAR(36) PRIMARY KEY,
-    bus_id VARCHAR(36) NOT NULL,
-    driver_id VARCHAR(36) NOT NULL,
-    date DATE NOT NULL,
-    type ENUM('fuel', 'repair', 'tire_inflation', 'maintenance', 'other') NOT NULL,
-    amount DECIMAL(10, 2) NOT NULL,
-    description TEXT NOT NULL,
+    student_id VARCHAR(36) NOT NULL,
+    tutor_id VARCHAR(36) NOT NULL,
+    reason TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
-    FOREIGN KEY (bus_id) REFERENCES buses(id) ON DELETE CASCADE,
-    FOREIGN KEY (driver_id) REFERENCES drivers(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+    FOREIGN KEY (tutor_id) REFERENCES tutors(id) ON DELETE CASCADE,
     
-    INDEX idx_bus (bus_id),
-    INDEX idx_driver (driver_id),
-    INDEX idx_date (date),
-    INDEX idx_type (type),
-    
-    CONSTRAINT chk_expense_amount CHECK (amount > 0)
+    INDEX idx_student (student_id),
+    INDEX idx_tutor (tutor_id),
+    INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Index composite pour améliorer les performances
-CREATE INDEX idx_bus_date ON bus_expenses(bus_id, date DESC);
-CREATE INDEX idx_driver_date ON bus_expenses(driver_id, date DESC);
+-- ============================================
+-- TRIGGERS - CORRIGÉS
+-- ============================================
+
 DELIMITER //
 
 -- Trigger: Mise à jour automatique du nombre d'accidents du chauffeur
+DROP TRIGGER IF EXISTS update_driver_accident_count//
 CREATE TRIGGER update_driver_accident_count 
 AFTER INSERT ON accidents
 FOR EACH ROW
@@ -334,14 +364,17 @@ BEGIN
     DECLARE accident_cnt INT;
     DECLARE user_id_val VARCHAR(36);
     
+    -- Compter les accidents
     SELECT COUNT(*) INTO accident_cnt
     FROM accidents 
     WHERE driver_id = NEW.driver_id;
     
+    -- Mettre à jour le compteur
     UPDATE drivers 
     SET accident_count = accident_cnt
     WHERE id = NEW.driver_id;
     
+    -- Si 3 accidents ou plus, licencier le chauffeur
     IF accident_cnt >= 3 THEN
         SELECT user_id INTO user_id_val FROM drivers WHERE id = NEW.driver_id;
         UPDATE users 
@@ -351,6 +384,7 @@ BEGIN
 END//
 
 -- Trigger: Mise à jour automatique du nombre d'absences de l'élève
+DROP TRIGGER IF EXISTS update_student_absence_count//
 CREATE TRIGGER update_student_absence_count 
 AFTER INSERT ON attendance
 FOR EACH ROW
@@ -407,45 +441,21 @@ VALUES
 -- ============================================
 
 -- Vue: Informations complètes des utilisateurs
-CREATE VIEW v_users_complete AS
-SELECT 
-    u.*,
-    CASE 
-        WHEN u.user_type = 'admin' THEN a.full_name
-        ELSE CONCAT(u.first_name, ' ', u.last_name)
-    END as display_name
-FROM users u
-LEFT JOIN admins a ON u.id = a.user_id;
+-- ============================================
+-- VUES UTILES
+-- ============================================
 
--- Vue: Bus avec informations complètes
-CREATE VIEW v_buses_complete AS
+-- Vue: Informations complètes des élèves (Version Corrigée)
+CREATE OR REPLACE VIEW v_students_complete AS
 SELECT 
-    b.*,
-    CONCAT(ud.first_name, ' ', ud.last_name) as driver_name,
-    ud.phone as driver_phone,
-    CONCAT(us.first_name, ' ', us.last_name) as supervisor_name,
-    us.phone as supervisor_phone,
-    r.route_id,
-    r.terminus,
-    (SELECT COUNT(*) FROM students WHERE bus_id = b.id AND status = 'approved') as student_count
-FROM buses b
-LEFT JOIN drivers d ON b.driver_id = d.id
-LEFT JOIN users ud ON d.user_id = ud.id
-LEFT JOIN supervisors s ON b.supervisor_id = s.id
-LEFT JOIN users us ON s.user_id = us.id
-LEFT JOIN routes r ON b.route_id = r.id;
-
--- Vue: Élèves avec informations complètes
-CREATE VIEW v_students_complete AS
-SELECT 
-    s.*,
-    CONCAT(ut.first_name, ' ', ut.last_name) as tutor_name,
-    ut.phone as tutor_phone,
-    ut.email as tutor_email,
-    ut.cin as tutor_cin,
-    b.bus_id,
-    b.matricule as bus_matricule,
-    r.route_id,
+    s.*, -- contient déjà s.bus_id et s.route_id
+    CONCAT(ut.first_name, ' ', ut.last_name) AS tutor_name,
+    ut.phone AS tutor_phone,
+    ut.email AS tutor_email,
+    ut.cin AS tutor_cin,
+    b.bus_id AS bus_code,         -- ✅ Renommé pour éviter le doublon avec s.bus_id
+    b.matricule AS bus_matricule,
+    r.route_id AS route_identifier, -- ✅ Renommé pour éviter le doublon avec s.route_id
     r.terminus
 FROM students s
 INNER JOIN tutors t ON s.tutor_id = t.id
@@ -461,3 +471,5 @@ CREATE INDEX idx_student_bus_status ON students(bus_id, status);
 CREATE INDEX idx_student_tutor_status ON students(tutor_id, status);
 CREATE INDEX idx_attendance_date_period ON attendance(date, period);
 CREATE INDEX idx_payments_status_date ON payments(status, payment_date);
+CREATE INDEX idx_accidents_driver_date ON accidents(driver_id, date DESC);
+CREATE INDEX idx_notifications_recipient_unread ON notifications(recipient_id, recipient_type, is_read, created_at DESC);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { adminApi } from  '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Button } from "@/components/ui/button";
@@ -47,10 +47,10 @@ export default function AdminPayments() {
   const loadData = async () => {
     try {
       const [paymentsData, studentsData, tutorsData, busesData] = await Promise.all([
-        mockApi.entities.Payment.list(),
-        mockApi.entities.Student.list(),
-        mockApi.entities.Tutor.list(),
-        mockApi.entities.Bus.list()
+        adminApi.entities.Payment.list(),
+        adminApi.entities.Student.list(),
+        adminApi.entities.Tutor.list(),
+        adminApi.entities.Bus.list()
       ]);
       
       const paymentsWithDetails = paymentsData.map(p => {
@@ -82,24 +82,24 @@ export default function AdminPayments() {
       const bus = buses.find(b => b.id === selectedBus);
       
       // Find route for this bus
-      const routes = await mockApi.entities.Route.list();
+      const routes = await adminApi.entities.Route.list();
       const route = routes.find(r => r.busId === selectedBus);
 
       // Update student with bus assignment
-      await mockApi.entities.Student.update(selectedPayment.studentId, {
+      await adminApi.entities.Student.update(selectedPayment.studentId, {
         busId: selectedBus,
         busGroup: selectedGroup,
         paymentStatus: 'paid'
       });
 
       // Update payment status
-      await mockApi.entities.Payment.update(selectedPayment.id, {
+      await adminApi.entities.Payment.update(selectedPayment.id, {
         status: 'paid',
         paymentDate: new Date().toISOString().split('T')[0]
       });
 
       // Notify tutor
-      await mockApi.entities.Notification.create({
+      await adminApi.entities.Notification.create({
         recipientId: selectedPayment.tutorId,
         recipientType: 'tutor',
         type: 'payment',

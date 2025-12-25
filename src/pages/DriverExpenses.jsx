@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { driverApi } from  '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Button } from "@/components/ui/button";
@@ -44,12 +44,12 @@ export default function DriverExpenses() {
 
   const loadData = async (user) => {
     try {
-      const buses = await mockApi.entities.Bus.filter({ driverId: user.id });
+      const buses = await driverApi.entities.Bus.filter({ driverId: user.id });
       const bus = buses[0];
       setMyBus(bus);
 
       if (bus) {
-        const expensesData = await mockApi.entities.BusExpense.filter({ busId: bus.id });
+        const expensesData = await driverApi.entities.BusExpense.filter({ busId: bus.id });
         setExpenses(expensesData);
       }
     } catch (error) {
@@ -64,7 +64,7 @@ export default function DriverExpenses() {
     setSubmitting(true);
 
     try {
-      await mockApi.entities.BusExpense.create({
+      await driverApi.entities.BusExpense.create({
         busId: myBus.id,
         driverId: currentUser.id,
         ...newExpense,
@@ -72,7 +72,7 @@ export default function DriverExpenses() {
       });
 
       // Notify admin
-      await mockApi.entities.Notification.create({
+      await driverApi.entities.Notification.create({
         recipientId: 'admin',
         recipientType: 'admin',
         type: 'general',

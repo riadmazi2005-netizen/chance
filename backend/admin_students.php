@@ -15,7 +15,7 @@ try {
             s.class,
             s.age,
             s.gender,
-            s.zone as quarter,
+            s.zone as zone,
             s.transport_type as transportType,
             s.subscription_type as subscriptionType,
             s.bus_group as busGroup,

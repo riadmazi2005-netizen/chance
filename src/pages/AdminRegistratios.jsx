@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { adminApi } from  '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Button } from "@/components/ui/button";
@@ -48,11 +48,11 @@ export default function AdminRegistrations() {
   const loadData = async () => {
     try {
       const [studentsData, busesData, tutorsData, routesData, allStudentsData] = await Promise.all([
-        mockApi.entities.Student.filter({ status: 'pending' }),
-        mockApi.entities.Bus.list(),
-        mockApi.entities.Tutor.list(),
-        mockApi.entities.Route.list(),
-        mockApi.entities.Student.list()
+        adminApi.entities.Student.filter({ status: 'pending' }),
+        adminApi.entities.Bus.list(),
+        adminApi.entities.Tutor.list(),
+        adminApi.entities.Route.list(),
+        adminApi.entities.Student.list()
       ]);
       
       const studentsWithTutors = studentsData.map(s => {
@@ -89,12 +89,12 @@ export default function AdminRegistrations() {
     
     try {
       // Update student status to approved WITHOUT bus assignment
-      await mockApi.entities.Student.update(selectedStudent.id, {
+      await adminApi.entities.Student.update(selectedStudent.id, {
         status: 'approved'
       });
 
       // Calculate family discount
-      const allStudents = await mockApi.entities.Student.list();
+      const allStudents = await adminApi.entities.Student.list();
       const tutorStudents = allStudents.filter(s => 
         s.tutorId === selectedStudent.tutorId && 
         (s.status === 'approved' || s.id === selectedStudent.id)
@@ -110,7 +110,7 @@ export default function AdminRegistrations() {
       const discountAmount = (baseAmount * discountPercentage) / 100;
       const finalAmount = baseAmount - discountAmount;
 
-      await mockApi.entities.Payment.create({
+      await adminApi.entities.Payment.create({
         studentId: selectedStudent.id,
         tutorId: selectedStudent.tutorId,
         amount: baseAmount,
@@ -127,7 +127,7 @@ export default function AdminRegistrations() {
         ? ` 🎉 Réduction familiale appliquée : -${discountPercentage}% (${discountAmount} DH). Montant à payer : ${finalAmount} DH.`
         : ` Montant à payer : ${finalAmount} DH.`;
 
-      await mockApi.entities.Notification.create({
+      await adminApi.entities.Notification.create({
         recipientId: selectedStudent.tutorId,
         recipientType: 'tutor',
         type: 'validation',
@@ -166,9 +166,9 @@ export default function AdminRegistrations() {
     if (!confirm('Êtes-vous sûr de vouloir refuser cette inscription ?')) return;
     
     try {
-      await mockApi.entities.Student.update(student.id, { status: 'rejected' });
+      await adminApi.entities.Student.update(student.id, { status: 'rejected' });
 
-      await mockApi.entities.Notification.create({
+      await adminApi.entities.Notification.create({
         recipientId: student.tutorId,
         recipientType: 'tutor',
         type: 'validation',

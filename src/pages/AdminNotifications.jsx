@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { adminApi } from  '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,10 +35,10 @@ export default function AdminNotifications() {
   const loadData = async () => {
     try {
       const [notifsData, raiseData, driversData, supervisorsData] = await Promise.all([
-        mockApi.entities.Notification.filter({ recipientType: 'admin' }),
-        mockApi.entities.RaiseRequest.filter({ status: 'pending' }),
-        mockApi.entities.Driver.list(),
-        mockApi.entities.Supervisor.list()
+        adminApi.entities.Notification.filter({ recipientType: 'admin' }),
+        adminApi.entities.RaiseRequest.filter({ status: 'pending' }),
+        adminApi.entities.Driver.list(),
+        adminApi.entities.Supervisor.list()
       ]);
       
       const raiseWithDetails = raiseData.map(r => {
@@ -62,7 +62,7 @@ export default function AdminNotifications() {
 
   const markAsRead = async (notifId) => {
     try {
-      await mockApi.entities.Notification.update(notifId, { read: true });
+      await adminApi.entities.Notification.update(notifId, { read: true });
       setNotifications(notifications.map(n => 
         n.id === notifId ? { ...n, read: true } : n
       ));
@@ -73,12 +73,12 @@ export default function AdminNotifications() {
 
   const handleRaiseRequest = async (request, approved) => {
     try {
-      await mockApi.entities.RaiseRequest.update(request.id, {
+      await adminApi.entities.RaiseRequest.update(request.id, {
         status: approved ? 'approved' : 'rejected'
       });
 
       // Notify requester
-      await mockApi.entities.Notification.create({
+      await adminApi.entities.Notification.create({
         recipientId: request.requesterId,
         recipientType: request.requesterType,
         type: 'general',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { adminApi } from  '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,12 +30,12 @@ export default function AdminStats() {
   const loadData = async () => {
     try {
       const [students, buses, drivers, routes, payments, accidents] = await Promise.all([
-        mockApi.entities.Student.filter({ status: 'approved' }),
-        mockApi.entities.Bus.list(),
-        mockApi.entities.Driver.list(),
-        mockApi.entities.Route.list(),
-        mockApi.entities.Payment.list(),
-        mockApi.entities.Accident.list()
+        adminApi.entities.Student.filter({ status: 'approved' }),
+        adminApi.entities.Bus.list(),
+        adminApi.entities.Driver.list(),
+        adminApi.entities.Route.list(),
+        adminApi.entities.Payment.list(),
+        adminApi.entities.Accident.list()
       ]);
 
       // Bus usage

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { adminApi } from  '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Button } from "@/components/ui/button";
@@ -52,8 +52,8 @@ export default function AdminRoutes() {
   const loadData = async () => {
     try {
       const [routesData, busesData] = await Promise.all([
-        mockApi.entities.Route.list(),
-        mockApi.entities.Bus.list()
+        adminApi.entities.Route.list(),
+        adminApi.entities.Bus.list()
       ]);
       
       const routesWithBus = routesData.map(r => {
@@ -74,9 +74,9 @@ export default function AdminRoutes() {
     setSubmitting(true);
     try {
       if (editingRoute) {
-        await mockApi.entities.Route.update(editingRoute.id, formData);
+        await adminApi.entities.Route.update(editingRoute.id, formData);
       } else {
-        await mockApi.entities.Route.create(formData);
+        await adminApi.entities.Route.create(formData);
       }
 
       setShowDialog(false);
@@ -92,7 +92,7 @@ export default function AdminRoutes() {
   const deleteRoute = async (route) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce trajet ?')) return;
     try {
-      await mockApi.entities.Route.delete(route.id);
+      await adminApi.entities.Route.delete(route.id);
       loadData();
     } catch (error) {
       console.error('Error deleting route:', error);

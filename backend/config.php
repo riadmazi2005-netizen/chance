@@ -59,4 +59,8 @@ function sendError($message, $statusCode = 400) {
     echo json_encode(['error' => $message], JSON_UNESCAPED_UNICODE);
     exit;
 }
+set_exception_handler(function($e) {
+    error_log('Uncaught exception: ' . $e->getMessage());
+    sendError('Une erreur est survenue', 500);
+});
 ?>

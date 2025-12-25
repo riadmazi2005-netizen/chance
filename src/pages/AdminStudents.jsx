@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import { adminApi } from  '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Badge } from "@/components/ui/badge";
@@ -41,9 +41,9 @@ export default function AdminStudents() {
   const loadData = async () => {
     try {
       const [studentsData, busesData, tutorsData] = await Promise.all([
-        mockApi.entities.Student.filter({ status: 'approved' }),
-        mockApi.entities.Bus.list(),
-        mockApi.entities.Tutor.list()
+        adminApi.entities.Student.filter({ status: 'approved' }),
+        adminApi.entities.Bus.list(),
+        adminApi.entities.Tutor.list()
       ]);
       
       const studentsWithDetails = studentsData.map(s => {
@@ -80,7 +80,7 @@ export default function AdminStudents() {
 
   const handleSaveEdit = async () => {
     try {
-      await mockApi.entities.Student.update(selectedStudent.id, editForm);
+      await adminApi.entities.Student.update(selectedStudent.id, editForm);
       setShowEditDialog(false);
       loadData();
     } catch (error) {
@@ -92,10 +92,10 @@ export default function AdminStudents() {
     if (!confirm(`Êtes-vous sûr de vouloir supprimer ${student.firstName} ${student.lastName} ?`)) return;
     
     try {
-      await mockApi.entities.Student.delete(student.id);
+      await adminApi.entities.Student.delete(student.id);
       
       // Notify tutor
-      await mockApi.entities.Notification.create({
+      await adminApi.entities.Notification.create({
         recipientId: student.tutorId,
         recipientType: 'tutor',
         type: 'general',
