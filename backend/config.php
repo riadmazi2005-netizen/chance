@@ -1,12 +1,18 @@
 <?php
 // config.php - Configuration de la base de données
+// Port MySQL: 3307 (au lieu du port par défaut 3306)
 
 // Paramètres de connexion
-define('DB_HOST', 'localhost');
+define('DB_HOST', 'localhost:3307');  // ⚠️ PORT 3307 AU LIEU DE 3306
 define('DB_NAME', 'transport_scolaire');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
+
+// Activer l'affichage des erreurs pour le débogage
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 // Connexion PDO
 try {
@@ -17,9 +23,20 @@ try {
         PDO::ATTR_EMULATE_PREPARES   => false,
     ];
     $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+    
+    // Log de succès
+    error_log('✅ Database connected successfully');
 } catch (PDOException $e) {
+    // Log de l'erreur
+    error_log('❌ Database connection error: ' . $e->getMessage());
+    
     http_response_code(500);
-    echo json_encode(['error' => 'Erreur de connexion à la base de données']);
+    echo json_encode([
+        'error' => 'Erreur de connexion à la base de données',
+        'details' => $e->getMessage(),
+        'host' => DB_HOST,
+        'database' => DB_NAME
+    ]);
     exit;
 }
 
@@ -55,12 +72,19 @@ function sendResponse($data, $statusCode = 200) {
 
 // Fonction pour envoyer une erreur
 function sendError($message, $statusCode = 400) {
+    error_log("❌ Error: $message");
     http_response_code($statusCode);
     echo json_encode(['error' => $message], JSON_UNESCAPED_UNICODE);
     exit;
 }
+
+// Handler d'exceptions global
 set_exception_handler(function($e) {
-    error_log('Uncaught exception: ' . $e->getMessage());
-    sendError('Une erreur est survenue', 500);
+    error_log('❌ Uncaught exception: ' . $e->getMessage());
+    error_log('Stack trace: ' . $e->getTraceAsString());
+    sendError('Une erreur est survenue: ' . $e->getMessage(), 500);
 });
+
+// Log des requêtes
+error_log('📥 Request: ' . $_SERVER['REQUEST_METHOD'] . ' ' . $_SERVER['REQUEST_URI']);
 ?>
