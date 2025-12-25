@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import apiService from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,17 +36,17 @@ export default function SupervisorAttendance() {
 
   const loadData = async (user) => {
     try {
-      const buses = await mockApi.entities.Bus.filter({ supervisorId: user.id });
+      const buses = await apiService.entities.Bus.filter({ supervisorId: user.id });
       const myBus = buses[0];
       setBus(myBus);
 
       if (myBus) {
-        const allStudents = await mockApi.entities.Student.filter({ 
+        const allStudents = await apiService.entities.Student.filter({ 
           busId: myBus.id, 
           status: 'approved' 
         });
         
-        const tutors = await mockApi.entities.Tutor.list();
+        const tutors = await apiService.entities.Tutor.list();
         const studentsWithTutors = allStudents.map(s => {
           const tutor = tutors.find(t => t.id === s.tutorId);
           return { 
@@ -59,7 +59,7 @@ export default function SupervisorAttendance() {
         setStudents(studentsWithTutors);
 
         // Load attendance for today
-        const attendanceRecords = await mockApi.entities.Attendance.filter({
+        const attendanceRecords = await apiService.entities.Attendance.filter({
           busId: myBus.id,
           date: selectedDate,
           period: selectedPeriod
@@ -84,7 +84,7 @@ export default function SupervisorAttendance() {
       const student = students.find(s => s.id === studentId);
       
       // Check if attendance already exists
-      const existing = await mockApi.entities.Attendance.filter({
+      const existing = await apiService.entities.Attendance.filter({
         studentId,
         busId: bus.id,
         date: selectedDate,
@@ -93,10 +93,10 @@ export default function SupervisorAttendance() {
 
       if (existing.length > 0) {
         // Update existing record
-        await mockApi.entities.Attendance.update(existing[0].id, { status });
+        await apiService.entities.Attendance.update(existing[0].id, { status });
       } else {
         // Create new record
-        await mockApi.entities.Attendance.create({
+        await apiService.entities.Attendance.create({
           studentId,
           busId: bus.id,
           date: selectedDate,
@@ -122,7 +122,7 @@ export default function SupervisorAttendance() {
 
       // If absent, notify tutor and update absence count
       if (status === 'absent') {
-        await mockApi.entities.Notification.create({
+        await apiService.entities.Notification.create({
           recipientId: student.tutorId,
           recipientType: 'tutor',
           type: 'absence',
@@ -133,7 +133,7 @@ export default function SupervisorAttendance() {
         });
 
         // Update student absence count
-        await mockApi.entities.Student.update(studentId, {
+        await apiService.entities.Student.update(studentId, {
           absenceCount: (student.absenceCount || 0) + 1
         });
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import apiService from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,10 +35,10 @@ export default function AdminNotifications() {
   const loadData = async () => {
     try {
       const [notifsData, raiseData, driversData, supervisorsData] = await Promise.all([
-        mockApi.entities.Notification.filter({ recipientType: 'admin' }),
-        mockApi.entities.RaiseRequest.filter({ status: 'pending' }),
-        mockApi.entities.Driver.list(),
-        mockApi.entities.Supervisor.list()
+        apiService.entities.Notification.filter({ recipientType: 'admin' }),
+        apiService.entities.RaiseRequest.filter({ status: 'pending' }),
+        apiService.entities.Driver.list(),
+        apiService.entities.Supervisor.list()
       ]);
       
       const raiseWithDetails = raiseData.map(r => {
@@ -62,7 +62,7 @@ export default function AdminNotifications() {
 
   const markAsRead = async (notifId) => {
     try {
-      await mockApi.entities.Notification.update(notifId, { read: true });
+      await apiService.entities.Notification.update(notifId, { read: true });
       setNotifications(notifications.map(n => 
         n.id === notifId ? { ...n, read: true } : n
       ));
@@ -73,12 +73,12 @@ export default function AdminNotifications() {
 
   const handleRaiseRequest = async (request, approved) => {
     try {
-      await mockApi.entities.RaiseRequest.update(request.id, {
+      await apiService.entities.RaiseRequest.update(request.id, {
         status: approved ? 'approved' : 'rejected'
       });
 
       // Notify requester
-      await mockApi.entities.Notification.create({
+      await apiService.entities.Notification.create({
         recipientId: request.requesterId,
         recipientType: request.requesterType,
         type: 'general',

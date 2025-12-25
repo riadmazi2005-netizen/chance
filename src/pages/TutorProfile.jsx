@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import apiService from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,7 @@ export default function TutorProfile() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await mockApi.entities.Tutor.update(currentUser.id, formData);
+      await apiService.entities.Tutor.update(currentUser.id, formData);
       
       const updatedUser = { ...currentUser, ...formData };
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import apiService from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Button } from "@/components/ui/button";
@@ -45,9 +45,9 @@ export default function AdminRegistrations() {
   const loadData = async () => {
     try {
       const [studentsData, busesData, tutorsData] = await Promise.all([
-        mockApi.entities.Student.filter({ status: 'pending' }),
-        mockApi.entities.Bus.list(),
-        mockApi.entities.Tutor.list()
+        apiService.entities.Student.filter({ status: 'pending' }),
+        apiService.entities.Bus.list(),
+        apiService.entities.Tutor.list()
       ]);
       
       const studentsWithTutors = studentsData.map(s => {
@@ -70,13 +70,13 @@ export default function AdminRegistrations() {
     
     try {
       // Update student status to approved WITHOUT bus assignment
-      await mockApi.entities.Student.update(selectedStudent.id, {
+      await apiService.entities.Student.update(selectedStudent.id, {
         status: 'approved'
       });
 
       // Create payment record
       const amount = selectedStudent.subscriptionType === 'annuel' ? 3000 : 300;
-      await mockApi.entities.Payment.create({
+      await apiService.entities.Payment.create({
         studentId: selectedStudent.id,
         tutorId: selectedStudent.tutorId,
         amount,
@@ -86,7 +86,7 @@ export default function AdminRegistrations() {
       });
 
       // Notify tutor
-      await mockApi.entities.Notification.create({
+      await apiService.entities.Notification.create({
         recipientId: selectedStudent.tutorId,
         recipientType: 'tutor',
         type: 'validation',
@@ -112,9 +112,9 @@ export default function AdminRegistrations() {
     if (!confirm('Êtes-vous sûr de vouloir refuser cette inscription ?')) return;
     
     try {
-      await mockApi.entities.Student.update(student.id, { status: 'rejected' });
+      await apiService.entities.Student.update(student.id, { status: 'rejected' });
 
-      await mockApi.entities.Notification.create({
+      await apiService.entities.Notification.create({
         recipientId: student.tutorId,
         recipientType: 'tutor',
         type: 'validation',

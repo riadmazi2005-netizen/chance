@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import apiService from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,7 @@ export default function DriverNotifications() {
 
   const loadNotifications = async (userId) => {
     try {
-      const data = await mockApi.entities.Notification.filter({ 
+      const data = await apiService.entities.Notification.filter({ 
         recipientId: userId, 
         recipientType: 'driver' 
       });
@@ -43,7 +43,7 @@ export default function DriverNotifications() {
 
   const markAsRead = async (notifId) => {
     try {
-      await mockApi.entities.Notification.update(notifId, { read: true });
+      await apiService.entities.Notification.update(notifId, { read: true });
       setNotifications(notifications.map(n => 
         n.id === notifId ? { ...n, read: true } : n
       ));

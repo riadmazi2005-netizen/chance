@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import apiService from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatCard from '@/components/ui/StatCard';
 import DataTable from '@/components/ui/DataTable';
@@ -60,26 +60,26 @@ export default function DriverDashboard() {
   const loadData = async (user) => {
     try {
       // Get driver's bus
-      const buses = await mockApi.entities.Bus.filter({ driverId: user.id });
+      const buses = await apiService.entities.Bus.filter({ driverId: user.id });
       const myBus = buses[0];
       setBus(myBus);
 
       if (myBus) {
         // Get route
         if (myBus.routeId) {
-          const routes = await mockApi.entities.Route.list();
+          const routes = await apiService.entities.Route.list();
           setRoute(routes.find(r => r.id === myBus.routeId));
         }
 
         // Get supervisor
         if (myBus.supervisorId) {
-          const supervisors = await mockApi.entities.Supervisor.list();
+          const supervisors = await apiService.entities.Supervisor.list();
           setSupervisor(supervisors.find(s => s.id === myBus.supervisorId));
         }
 
         // Get students
-        const allStudents = await mockApi.entities.Student.filter({ busId: myBus.id, status: 'approved' });
-        const tutors = await mockApi.entities.Tutor.list();
+        const allStudents = await apiService.entities.Student.filter({ busId: myBus.id, status: 'approved' });
+        const tutors = await apiService.entities.Tutor.list();
         const studentsWithTutors = allStudents.map(s => {
           const tutor = tutors.find(t => t.id === s.tutorId);
           return { ...s, tutorPhone: tutor?.phone };
@@ -88,11 +88,11 @@ export default function DriverDashboard() {
       }
 
       // Get accidents
-      const allAccidents = await mockApi.entities.Accident.filter({ driverId: user.id });
+      const allAccidents = await apiService.entities.Accident.filter({ driverId: user.id });
       setAccidents(allAccidents);
 
       // Get notifications
-      const notifs = await mockApi.entities.Notification.filter({ 
+      const notifs = await apiService.entities.Notification.filter({ 
         recipientId: user.id, 
         recipientType: 'driver' 
       });
@@ -107,7 +107,7 @@ export default function DriverDashboard() {
   const requestRaise = async () => {
     setSubmitting(true);
     try {
-      await mockApi.entities.RaiseRequest.create({
+      await apiService.entities.RaiseRequest.create({
         requesterId: currentUser.id,
         requesterType: 'driver',
         currentSalary: currentUser.salary || 0,
@@ -115,7 +115,7 @@ export default function DriverDashboard() {
         status: 'pending'
       });
 
-      await mockApi.entities.Notification.create({
+      await apiService.entities.Notification.create({
         recipientId: 'admin',
         recipientType: 'admin',
         type: 'raise_request',
@@ -138,7 +138,7 @@ export default function DriverDashboard() {
   const saveProfile = async () => {
     setSubmitting(true);
     try {
-      await mockApi.entities.Driver.update(currentUser.id, profileData);
+      await apiService.entities.Driver.update(currentUser.id, profileData);
       const updatedUser = { ...currentUser, ...profileData };
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));
       setCurrentUser(updatedUser);

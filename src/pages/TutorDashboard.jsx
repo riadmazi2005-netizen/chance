@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockData } from '@/services/mockDataService';
+import apiService from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatCard from '@/components/ui/StatCard';
 import { Button } from "@/components/ui/button";
@@ -64,9 +64,9 @@ export default function TutorDashboard() {
   const loadData = async (tutorId) => {
     try {
       const [studentsData, notificationsData, busesData] = await Promise.all([
-        mockApi.entities.Student.filter({ tutorId }),
-        mockApi.entities.Notification.filter({ recipientId: tutorId, recipientType: 'tutor' }),
-        mockApi.entities.Bus.list()
+        apiService.entities.Student.filter({ tutorId }),
+        apiService.entities.Notification.filter({ recipientId: tutorId, recipientType: 'tutor' }),
+        apiService.entities.Bus.list()
       ]);
       setStudents(studentsData);
       setNotifications(notificationsData);
@@ -83,7 +83,7 @@ export default function TutorDashboard() {
     setSubmitting(true);
     
     try {
-      await mockApi.entities.Student.create({
+      await apiService.entities.Student.create({
         ...newStudent,
         age: parseInt(newStudent.age),
         tutorId: currentUser.id,
@@ -93,7 +93,7 @@ export default function TutorDashboard() {
       });
 
       // Create notification for admin
-      await mockApi.entities.Notification.create({
+      await apiService.entities.Notification.create({
         recipientId: 'admin',
         recipientType: 'admin',
         type: 'general',
@@ -132,12 +132,12 @@ export default function TutorDashboard() {
 
     setSubmitting(true);
     try {
-      await mockApi.entities.Student.update(selectedPayment.id, {
+      await apiService.entities.Student.update(selectedPayment.id, {
         paymentStatus: 'paid'
       });
 
       // Create payment record
-      await mockApi.entities.Payment.create({
+      await apiService.entities.Payment.create({
         studentId: selectedPayment.id,
         tutorId: currentUser.id,
         amount: selectedPayment.subscriptionType === 'annuel' ? 3000 : 300,
@@ -149,7 +149,7 @@ export default function TutorDashboard() {
       });
 
       // Notify admin
-      await mockApi.entities.Notification.create({
+      await apiService.entities.Notification.create({
         recipientId: 'admin',
         recipientType: 'admin',
         type: 'payment',

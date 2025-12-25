@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import apiService from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DataTable from '@/components/ui/DataTable';
 import { Button } from "@/components/ui/button";
@@ -57,9 +57,9 @@ export default function AdminDrivers() {
   const loadData = async () => {
     try {
       const [driversData, busesData, accidentsData] = await Promise.all([
-        mockApi.entities.Driver.list(),
-        mockApi.entities.Bus.list(),
-        mockApi.entities.Accident.list()
+        apiService.entities.Driver.list(),
+        apiService.entities.Bus.list(),
+        apiService.entities.Accident.list()
       ]);
       
       const driversWithDetails = driversData.map(d => {
@@ -89,9 +89,9 @@ export default function AdminDrivers() {
 
       if (editingDriver) {
         const { password, ...updateData } = data;
-        await mockApi.entities.Driver.update(editingDriver.id, password ? data : updateData);
+        await apiService.entities.Driver.update(editingDriver.id, password ? data : updateData);
       } else {
-        await mockApi.entities.Driver.create(data);
+        await apiService.entities.Driver.create(data);
       }
 
       setShowDialog(false);
@@ -107,7 +107,7 @@ export default function AdminDrivers() {
   const deleteDriver = async (driver) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce chauffeur ?')) return;
     try {
-      await mockApi.entities.Driver.delete(driver.id);
+      await apiService.entities.Driver.delete(driver.id);
       loadData();
     } catch (error) {
       console.error('Error deleting driver:', error);

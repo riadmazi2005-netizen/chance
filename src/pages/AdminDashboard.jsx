@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { mockApi } from '@/services/mockData';
+import apiService from '@/services/apiService';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatCard from '@/components/ui/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,13 +34,13 @@ export default function AdminDashboard() {
   const loadData = async () => {
     try {
       const [students, buses, drivers, routes, payments, accidents, notifs] = await Promise.all([
-        mockApi.entities.Student.list(),
-        mockApi.entities.Bus.list(),
-        mockApi.entities.Driver.list(),
-        mockApi.entities.Route.list(),
-        mockApi.entities.Payment.list(),
-        mockApi.entities.Accident.list(),
-        mockApi.entities.Notification.filter({ recipientType: 'admin' })
+        apiService.entities.Student.list(),
+        apiService.entities.Bus.list(),
+        apiService.entities.Driver.list(),
+        apiService.entities.Route.list(),
+        apiService.entities.Payment.list(),
+        apiService.entities.Accident.list(),
+        apiService.entities.Notification.filter({ recipientType: 'admin' })
       ]);
 
       const approvedStudents = students.filter(s => s.status === 'approved');

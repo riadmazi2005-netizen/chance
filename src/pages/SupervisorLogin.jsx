@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { UserCog } from 'lucide-react';
 import LoginForm from '@/components/auth/LoginForm';
-import { mockApi } from '@/services/mockData';
+import apiService from '@/services/apiService';
 
 export default function SupervisorLogin() {
   const navigate = useNavigate();
 
   const handleLogin = async ({ identifier, password }) => {
-    const supervisors = await mockApi.entities.Supervisor.list();
+    const supervisors = await apiService.entities.Supervisor.list();
     
     const supervisor = supervisors.find(s => 
       (s.email === identifier || s.phone === identifier) && s.password === password
