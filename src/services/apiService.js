@@ -1,10 +1,5 @@
 // src/services/apiService.js
-
-<<<<<<< Updated upstream
-const API_BASE_URL = 'http://localhost/transport_scolaire/backend/api';
-=======
 const API_BASE_URL = 'http://localhost/backend';
->>>>>>> Stashed changes
 
 class ApiService {
   constructor() {
@@ -274,10 +269,13 @@ class ApiService {
 
   // Authentication
   auth = {
-    adminLogin: (credentials) => this.request('/auth/admin_login.php', {
-      method: 'POST',
-      body: JSON.stringify(credentials)
-    }),
+    adminLogin: (credentials) => {
+      const { first_name, last_name, password } = credentials;
+      return this.request('/auth/admin_login.php', {
+        method: 'POST',
+        body: JSON.stringify({ first_name, last_name, password })
+      });
+    },
     tutorLogin: (credentials) => this.request('/auth/tutor_login.php', {
       method: 'POST',
       body: JSON.stringify(credentials)
@@ -566,10 +564,3 @@ export async function loginUser(credentials) {
   });
 }
 
-export default {
-  tutorApi,
-  adminApi,
-  driverApi,
-  supervisorApi,
-};
->>>>>>> Stashed changes
